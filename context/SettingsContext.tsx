@@ -29,6 +29,18 @@ import { fakeApiCall } from '../utils/fakeApiCall';
 
 export type ThemeMode = 'light' | 'dark';
 export type DensityMode = 'compact' | 'default' | 'spacious';
+export type DashboardWidgetKey =
+  | 'weeklyClients'
+  | 'weeklyCases'
+  | 'conversionRate'
+  | 'activeCases';
+
+const DEFAULT_DASHBOARD_WIDGET_ORDER: DashboardWidgetKey[] = [
+  'weeklyClients',
+  'weeklyCases',
+  'conversionRate',
+  'activeCases',
+];
 
 interface SettingsContextValue {
   documentTemplates: DocumentTemplate[];
@@ -41,10 +53,14 @@ interface SettingsContextValue {
   notificationSettings: NotificationSettings;
   theme: ThemeMode;
   density: DensityMode;
+  dashboardWidgetOrder: DashboardWidgetKey[];
+  hiddenDashboardWidgets: DashboardWidgetKey[];
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
   setDensity: (density: DensityMode) => void;
   setSidebarStatus: (status: CaseStatus) => void;
+  setDashboardWidgetOrder: (order: DashboardWidgetKey[]) => void;
+  setDashboardWidgetVisibility: (widget: DashboardWidgetKey, visible: boolean) => void;
   addTemplate: (templateData: Omit<DocumentTemplate, 'id'>) => Promise<void>;
   updateTemplate: (template: DocumentTemplate) => Promise<void>;
   deleteTemplate: (templateId: string) => Promise<void>;
@@ -141,6 +157,42 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     mockNotificationSettings,
   );
   const [sidebarStatus, setSidebarStatus] = useLocalStorage<CaseStatus>('crm_sidebarStatus', initialCaseStatuses[0]);
+  const [dashboardWidgetOrder, setDashboardWidgetOrderState] = useLocalStorage<DashboardWidgetKey[]>(
+    'crm_dashboardWidgetOrder',
+    DEFAULT_DASHBOARD_WIDGET_ORDER,
+  );
+  const [hiddenDashboardWidgets, setHiddenDashboardWidgets] = useLocalStorage<DashboardWidgetKey[]>(
+    'crm_hiddenDashboardWidgets',
+    [],
+  );
+
+  const setDashboardWidgetOrder = useCallback(
+    (order: DashboardWidgetKey[]) => {
+      setDashboardWidgetOrderState(prev => {
+        if (prev.length === order.length && prev.every((item, index) => item === order[index])) {
+          return prev;
+        }
+        return order;
+      });
+    },
+    [setDashboardWidgetOrderState],
+  );
+
+  const setDashboardWidgetVisibility = useCallback(
+    (widget: DashboardWidgetKey, visible: boolean) => {
+      setHiddenDashboardWidgets(prev => {
+        const isHidden = prev.includes(widget);
+        if (!visible && !isHidden) {
+          return [...prev, widget];
+        }
+        if (visible && isHidden) {
+          return prev.filter(item => item !== widget);
+        }
+        return prev;
+      });
+    },
+    [setHiddenDashboardWidgets],
+  );
 
   const addTemplate = useCallback(async (templateData: Omit<DocumentTemplate, 'id'>) => {
     const newTemplate: DocumentTemplate = { ...templateData, id: `template-${Date.now()}` };
@@ -232,6 +284,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     setBrandingSettings(mockBrandingSettings);
     setNotificationSettings(mockNotificationSettings);
     setSidebarStatus(initialCaseStatuses[0]);
+    setDashboardWidgetOrderState(DEFAULT_DASHBOARD_WIDGET_ORDER);
+    setHiddenDashboardWidgets([]);
   }, [
     setDocumentTemplates,
     setBenefitTypes,
@@ -241,6 +295,8 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     setBrandingSettings,
     setNotificationSettings,
     setSidebarStatus,
+    setDashboardWidgetOrderState,
+    setHiddenDashboardWidgets,
   ]);
 
   const value = useMemo(() => ({
@@ -254,10 +310,14 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     notificationSettings,
     theme,
     density,
+    dashboardWidgetOrder,
+    hiddenDashboardWidgets,
     setTheme,
     toggleTheme,
     setDensity,
     setSidebarStatus,
+    setDashboardWidgetOrder,
+    setDashboardWidgetVisibility,
     addTemplate,
     updateTemplate,
     deleteTemplate,
@@ -281,10 +341,14 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     notificationSettings,
     theme,
     density,
+    dashboardWidgetOrder,
+    hiddenDashboardWidgets,
     setTheme,
     toggleTheme,
     setDensity,
     setSidebarStatus,
+    setDashboardWidgetOrder,
+    setDashboardWidgetVisibility,
     addTemplate,
     updateTemplate,
     deleteTemplate,
