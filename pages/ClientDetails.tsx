@@ -4,12 +4,15 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useClients } from '../context/ClientsContext';
 import { useCases } from '../context/CasesContext';
 import { Client, Case, CaseStatus } from '../types';
-import { ArrowLeft, User, Mail, Phone, Home, Edit, PlusCircle, Briefcase, Gavel, Scale } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Home, Edit, PlusCircle, Briefcase, Gavel, Scale, MapPin } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import ClientFormModal from '../components/client/ClientFormModal';
 import CaseFormModal from '../components/case/CaseFormModal';
 import ClientDetailTabs from '../components/client/ClientDetailTabs';
 import ClientFinancials from '../components/client/ClientFinancials';
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 
 const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode }> = ({ icon, label, value }) => (
   <div className="flex items-start py-2">
@@ -45,17 +48,27 @@ const ClientDetails: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
 
-  const handleSaveClient = (clientData: Omit<Client, 'id' | 'createdAt'> | Client) => {
-    updateClient(clientData as Client);
-    addToast('Dados do cliente atualizados!', 'success');
-    setIsEditModalOpen(false);
+  const handleSaveClient = async (clientData: Omit<Client, 'id' | 'createdAt'> | Client) => {
+    try {
+      await updateClient(clientData as Client);
+      addToast('Dados do cliente atualizados!', 'success');
+      setIsEditModalOpen(false);
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível atualizar o cliente. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível atualizar o cliente. Tente novamente.');
+    }
   };
 
   const handleSaveCase = async (caseData: Omit<Case, 'id' | 'lastUpdate' | 'tasks' | 'aiSummary' | 'documents' | 'legalDocuments' | 'startDate'> | Case) => {
-    const newCase = await saveCase(caseData as Case);
-    addToast(`Novo caso "${newCase.title}" criado para ${client?.name}!`, 'success');
-    setIsCaseModalOpen(false);
-    navigate(`/casos/${newCase.id}`);
+    try {
+      const newCase = await saveCase(caseData as Case);
+      addToast(`Novo caso "${newCase.title}" criado para ${client?.name}!`, 'success');
+      setIsCaseModalOpen(false);
+      navigate(`/casos/${newCase.id}`);
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível criar o caso. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível criar o caso. Tente novamente.');
+    }
   };
 
   if (!client) {

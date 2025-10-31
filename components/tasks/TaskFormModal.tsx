@@ -8,7 +8,7 @@ import { Task } from '../../types';
 interface TaskFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (taskData: Omit<Task, 'id' | 'completed' | 'caseId'>, caseId: string) => void;
+  onSave: (taskData: Omit<Task, 'id' | 'completed' | 'caseId'>, caseId: string) => Promise<void> | void;
   initialDate: Date | null;
   preselectedCaseId?: string;
 }
@@ -41,14 +41,18 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
     }
   }, [isOpen, initialDate, activeCases, preselectedCaseId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim() || !dueDate || !caseId) {
         addToast("Por favor, preencha todos os campos.", "error");
         return;
     }
-    onSave({ description, dueDate }, caseId);
-    onClose();
+    try {
+      await onSave({ description, dueDate }, caseId);
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar tarefa pelo modal.', error);
+    }
   };
   
   if (!isOpen) return null;

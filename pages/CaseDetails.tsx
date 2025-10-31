@@ -13,6 +13,9 @@ import TaskFormModal from '../components/tasks/TaskFormModal';
 import CaseDetailTabs from '../components/case/CaseDetailTabs';
 import CaseFinancials from '../components/case/CaseFinancials';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value: React.ReactNode }> = ({ icon, label, value }) => (
   <div className="flex items-start">
     <div className="text-slate-500 mt-1">{icon}</div>
@@ -131,8 +134,9 @@ const CaseDetails: React.FC = () => {
       await saveCase({ ...caseData, aiSummary: summary, lastUpdate: new Date().toISOString().split('T')[0] });
       addToast('Resumo gerado com sucesso!', 'success');
     } catch (e: any) {
-      setError(e.message || "Ocorreu um erro desconhecido.");
-      addToast(e.message || "Ocorreu um erro.", 'error');
+      const message = getErrorMessage(e, 'Não foi possível gerar o resumo do caso. Tente novamente.');
+      setError(message);
+      addToast(message, 'error');
     } finally {
       setIsGeneratingSummary(false);
     }
@@ -158,21 +162,29 @@ const CaseDetails: React.FC = () => {
 
   const handleAddSuggestedTask = async (suggestedTask: SuggestedTask) => {
     if (!caseData) return;
-    await addTaskToCase(caseData.id, {
+    try {
+      await addTaskToCase(caseData.id, {
         description: suggestedTask.description,
         dueDate: suggestedTask.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        completed: false
-    });
-    setSuggestedTasks(prev => prev.filter(t => t.description !== suggestedTask.description));
-    addToast('Tarefa sugerida adicionada!', 'success');
+        completed: false,
+      });
+      setSuggestedTasks(prev => prev.filter(t => t.description !== suggestedTask.description));
+      addToast('Tarefa sugerida adicionada!', 'success');
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível adicionar a tarefa sugerida. Tente novamente.'), 'error');
+    }
   };
 
   const handleToggleTask = async (taskId: string) => {
     if (!caseData) return;
     const task = caseData.tasks.find(t => t.id === taskId);
     if (task) {
+      try {
         await updateTask({ ...task, completed: !task.completed });
         addToast(`Tarefa ${task.completed ? 'marcada como pendente' : 'concluída'}!`, 'success');
+      } catch (error) {
+        addToast(getErrorMessage(error, 'Não foi possível atualizar a tarefa. Tente novamente.'), 'error');
+      }
     }
   };
 
@@ -182,15 +194,25 @@ const CaseDetails: React.FC = () => {
     setIsAddingNote(true);
     const timestamp = new Date().toLocaleString('pt-BR');
     const updatedNotes = `${caseData.notes}\n\n--- ${timestamp} ---\n${newNote}`;
-    await saveCase({ ...caseData, notes: updatedNotes.trim(), lastUpdate: new Date().toISOString().split('T')[0] });
-    addToast('Nova nota adicionada com sucesso!', 'success');
-    setNewNote('');
-    setIsAddingNote(false);
+    try {
+      await saveCase({ ...caseData, notes: updatedNotes.trim(), lastUpdate: new Date().toISOString().split('T')[0] });
+      addToast('Nova nota adicionada com sucesso!', 'success');
+      setNewNote('');
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível adicionar a nova nota. Tente novamente.'), 'error');
+    } finally {
+      setIsAddingNote(false);
+    }
   };
 
   const handleSaveTask = async (taskData: Omit<Task, 'id' | 'completed' | 'caseId'>, targetCaseId: string) => {
-    await addTaskToCase(targetCaseId, { ...taskData, completed: false });
-    addToast('Nova tarefa adicionada com sucesso!', 'success');
+    try {
+      await addTaskToCase(targetCaseId, { ...taskData, completed: false });
+      addToast('Nova tarefa adicionada com sucesso!', 'success');
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível adicionar a nova tarefa. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível adicionar a nova tarefa. Tente novamente.');
+    }
   };
 
   if (!caseData || !client) {

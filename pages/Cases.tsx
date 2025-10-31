@@ -43,6 +43,9 @@ const NatureBadge: React.FC<{ nature: 'Judicial' | 'Administrativo' }> = ({ natu
     );
 };
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 export default function Cases() {
   const { cases, saveCase } = useCases();
   const { getClientById } = useClients();
@@ -97,9 +100,14 @@ export default function Cases() {
   };
 
   const handleSaveCase = async (caseData: Omit<Case, 'id' | 'lastUpdate' | 'tasks' | 'aiSummary' | 'documents' | 'legalDocuments' | 'startDate'> | Case) => {
-    await saveCase(caseData as Case);
-    addToast(`Caso "${caseData.title}" salvo com sucesso!`, 'success');
-    handleCloseModal();
+    try {
+      await saveCase(caseData as Case);
+      addToast(`Caso "${caseData.title}" salvo com sucesso!`, 'success');
+      handleCloseModal();
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível salvar o caso. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível salvar o caso. Tente novamente.');
+    }
   };
 
   return (

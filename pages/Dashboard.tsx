@@ -15,6 +15,9 @@ import { useToast } from '../context/ToastContext';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 const QuickAccessButton: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void; }> = ({ icon, label, onClick }) => (
   <button onClick={onClick} className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-xl shadow-sm text-slate-700 hover:bg-sky-50 hover:text-sky-600 transition-all duration-200 hover:shadow-md">
     <div className="p-3 bg-slate-100 rounded-full">{icon}</div>
@@ -155,30 +158,50 @@ export default function Dashboard() {
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [feeModalOpen, setFeeModalOpen] = useState(false);
 
-  const handleSaveClient = (clientData: Omit<Client, 'id' | 'createdAt'> | Client) => {
-    addClient(clientData as Omit<Client, 'id' | 'createdAt'>);
-    addToast('Cliente adicionado com sucesso!', 'success');
-    setClientModalOpen(false);
-    navigate('/clientes');
+  const handleSaveClient = async (clientData: Omit<Client, 'id' | 'createdAt'> | Client) => {
+    try {
+      await addClient(clientData as Omit<Client, 'id' | 'createdAt'>);
+      addToast('Cliente adicionado com sucesso!', 'success');
+      setClientModalOpen(false);
+      navigate('/clientes');
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível adicionar o cliente. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível adicionar o cliente. Tente novamente.');
+    }
   };
 
-  const handleSaveCase = (caseData: Omit<Case, 'id' | 'lastUpdate' | 'tasks' | 'aiSummary' | 'documents' | 'legalDocuments' | 'startDate'> | Case) => {
-    saveCase(caseData);
-    addToast('Caso adicionado com sucesso!', 'success');
-    setCaseModalOpen(false);
-    navigate('/casos');
+  const handleSaveCase = async (caseData: Omit<Case, 'id' | 'lastUpdate' | 'tasks' | 'aiSummary' | 'documents' | 'legalDocuments' | 'startDate'> | Case) => {
+    try {
+      await saveCase(caseData);
+      addToast('Caso adicionado com sucesso!', 'success');
+      setCaseModalOpen(false);
+      navigate('/casos');
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível adicionar o caso. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível adicionar o caso. Tente novamente.');
+    }
   };
 
-  const handleSaveTask = (taskData: Omit<Task, 'id' | 'completed' | 'caseId'>, caseId: string) => {
-    addTaskToCase(caseId, { ...taskData, completed: false });
-    addToast('Tarefa adicionada com sucesso!', 'success');
-    setTaskModalOpen(false);
+  const handleSaveTask = async (taskData: Omit<Task, 'id' | 'completed' | 'caseId'>, caseId: string) => {
+    try {
+      await addTaskToCase(caseId, { ...taskData, completed: false });
+      addToast('Tarefa adicionada com sucesso!', 'success');
+      setTaskModalOpen(false);
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível adicionar a tarefa. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível adicionar a tarefa. Tente novamente.');
+    }
   };
 
-  const handleSaveFee = (feeData: Omit<Fee, 'id'> | Omit<Expense, 'id'>) => {
-    addFee(feeData as Omit<Fee, 'id'>);
-    addToast('Honorário adicionado com sucesso!', 'success');
-    setFeeModalOpen(false);
+  const handleSaveFee = async (feeData: Omit<Fee, 'id'> | Omit<Expense, 'id'>) => {
+    try {
+      await addFee(feeData as Omit<Fee, 'id'>);
+      addToast('Honorário adicionado com sucesso!', 'success');
+      setFeeModalOpen(false);
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível adicionar o honorário. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível adicionar o honorário. Tente novamente.');
+    }
   };
 
   return (

@@ -10,7 +10,7 @@ type EntryType = 'fee' | 'expense';
 interface FinancialEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: Omit<Fee, 'id'> | Omit<Expense, 'id'> | Fee | Expense) => void;
+  onSave: (data: Omit<Fee, 'id'> | Omit<Expense, 'id'> | Fee | Expense) => Promise<void> | void;
   initialData: Fee | Expense | null;
   entryType: EntryType;
   preselectedCaseId?: string;
@@ -58,7 +58,7 @@ const FinancialEntryModal: React.FC<FinancialEntryModalProps> = ({ isOpen, onClo
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.caseId || !formData.description || !formData.amount || !formData.date) {
       addToast("Por favor, preencha todos os campos.", "error");
@@ -92,8 +92,12 @@ const FinancialEntryModal: React.FC<FinancialEntryModalProps> = ({ isOpen, onClo
       (saveData as Fee | Expense).id = initialData!.id;
     }
 
-    onSave(saveData);
-    onClose();
+    try {
+      await onSave(saveData);
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar lançamento financeiro pelo modal.', error);
+    }
   };
 
   if (!isOpen) return null;

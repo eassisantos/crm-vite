@@ -7,6 +7,9 @@ import { ChevronLeft, ChevronRight, PlusCircle } from 'lucide-react';
 import TaskFormModal from '../components/tasks/TaskFormModal';
 import { useToast } from '../context/ToastContext';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 const Agenda: React.FC = () => {
   const { cases, addTaskToCase } = useCases();
   const { addToast } = useToast();
@@ -35,8 +38,13 @@ const Agenda: React.FC = () => {
   };
 
   const handleSaveTask = async (taskData: Omit<Task, 'id' | 'completed' | 'caseId'>, caseId: string) => {
-    await addTaskToCase(caseId, { ...taskData, completed: false });
-    addToast('Tarefa adicionada com sucesso!', 'success');
+    try {
+      await addTaskToCase(caseId, { ...taskData, completed: false });
+      addToast('Tarefa adicionada com sucesso!', 'success');
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível adicionar a tarefa. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível adicionar a tarefa. Tente novamente.');
+    }
   };
 
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);

@@ -24,30 +24,54 @@ export const ClientsProvider: React.FC<{ children: ReactNode }> = ({ children })
   const { removeCasesByClientId } = useCases();
   const { removeFinancialsByCaseIds } = useFinancial();
 
+  const handleOperationError = (error: unknown, fallbackMessage: string): never => {
+    console.error(fallbackMessage, error);
+    if (error instanceof Error && error.message) {
+      throw new Error(error.message);
+    }
+    throw new Error(fallbackMessage);
+  };
+
   const getClientById = useCallback((id: string) => clients.find(c => c.id === id), [clients]);
 
   const addClient = useCallback(async (clientData: ClientFormData): Promise<Client> => {
-    const newClient: Client = { ...clientData, id: `client-${Date.now()}`, createdAt: new Date().toISOString() };
-    await fakeApiCall(null);
-    setClients(prev => [...prev, newClient]);
-    return newClient;
+    try {
+      const newClient: Client = { ...clientData, id: `client-${Date.now()}`, createdAt: new Date().toISOString() };
+      await fakeApiCall(null);
+      setClients(prev => [...prev, newClient]);
+      return newClient;
+    } catch (error) {
+      return handleOperationError(error, 'Não foi possível adicionar o cliente. Tente novamente.');
+    }
   }, [setClients]);
 
   const updateClient = useCallback(async (clientData: Client) => {
-    await fakeApiCall(null);
-    setClients(prev => prev.map(c => (c.id === clientData.id ? clientData : c)));
+    try {
+      await fakeApiCall(null);
+      setClients(prev => prev.map(c => (c.id === clientData.id ? clientData : c)));
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível atualizar o cliente. Tente novamente.');
+    }
   }, [setClients]);
 
   const deleteClient = useCallback(async (clientId: string) => {
-    await fakeApiCall(null);
-    const caseIds = await removeCasesByClientId(clientId);
-    await removeFinancialsByCaseIds(caseIds);
-    setClients(prev => prev.filter(c => c.id !== clientId));
+    try {
+      await fakeApiCall(null);
+      const caseIds = await removeCasesByClientId(clientId);
+      await removeFinancialsByCaseIds(caseIds);
+      setClients(prev => prev.filter(c => c.id !== clientId));
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível remover o cliente. Tente novamente.');
+    }
   }, [removeCasesByClientId, removeFinancialsByCaseIds, setClients]);
 
   const resetClients = useCallback(async () => {
-    await fakeApiCall(null);
-    setClients(mockClients);
+    try {
+      await fakeApiCall(null);
+      setClients(mockClients);
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível restaurar a lista de clientes. Tente novamente.');
+    }
   }, [setClients]);
 
   const value = useMemo(() => ({

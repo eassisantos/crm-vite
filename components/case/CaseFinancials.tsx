@@ -8,6 +8,9 @@ import FinancialEntryModal from '../financials/FinancialEntryModal';
 import ConfirmationModal from '../common/ConfirmationModal';
 import InstallmentManagerModal from '../financials/InstallmentManagerModal';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 interface CaseFinancialsProps {
   caseData: Case;
 }
@@ -49,42 +52,53 @@ const CaseFinancials: React.FC<CaseFinancialsProps> = ({ caseData }) => {
     setIsModalOpen(true);
   };
 
-  const handleSaveEntry = (data: Omit<Fee, 'id'> | Omit<Expense, 'id'> | Fee | Expense) => {
-    if ('id' in data) { // Update
-      if ('dueDate' in data) {
-        updateFee(data as Fee);
-        addToast('Honorário atualizado!', 'success');
+  const handleSaveEntry = async (data: Omit<Fee, 'id'> | Omit<Expense, 'id'> | Fee | Expense) => {
+    try {
+      if ('id' in data) {
+        if ('dueDate' in data) {
+          await updateFee(data as Fee);
+          addToast('Honorário atualizado!', 'success');
+        } else {
+          await updateExpense(data as Expense);
+          addToast('Despesa atualizada!', 'success');
+        }
       } else {
-        updateExpense(data as Expense);
-        addToast('Despesa atualizada!', 'success');
+        if ('dueDate' in data) {
+          await addFee(data as Omit<Fee, 'id'>);
+          addToast('Novo honorário adicionado!', 'success');
+        } else {
+          await addExpense(data as Omit<Expense, 'id'>);
+          addToast('Nova despesa adicionada!', 'success');
+        }
       }
-    } else { // Create
-      if ('dueDate' in data) {
-        addFee(data as Omit<Fee, 'id'>);
-        addToast('Novo honorário adicionado!', 'success');
-      } else {
-        addExpense(data as Omit<Expense, 'id'>);
-        addToast('Nova despesa adicionada!', 'success');
-      }
+      setIsModalOpen(false);
+      setEditingEntry(null);
+    } catch (error) {
+      const fallback = 'dueDate' in data ? 'Não foi possível salvar o honorário. Tente novamente.' : 'Não foi possível salvar a despesa. Tente novamente.';
+      addToast(getErrorMessage(error, fallback), 'error');
+      throw error instanceof Error ? error : new Error(fallback);
     }
-    setIsModalOpen(false);
-    setEditingEntry(null);
   };
 
   const handleDeleteRequest = (entry: Fee | Expense) => {
     setDeletingEntry(entry);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deletingEntry) return;
-    if ('dueDate' in deletingEntry) {
-      deleteFee(deletingEntry.id);
-      addToast('Honorário excluído.', 'info');
-    } else {
-      deleteExpense(deletingEntry.id);
-      addToast('Despesa excluída.', 'info');
+    try {
+      if ('dueDate' in deletingEntry) {
+        await deleteFee(deletingEntry.id);
+        addToast('Honorário excluído.', 'info');
+      } else {
+        await deleteExpense(deletingEntry.id);
+        addToast('Despesa excluída.', 'info');
+      }
+      setDeletingEntry(null);
+    } catch (error) {
+      const fallback = 'dueDate' in deletingEntry ? 'Não foi possível excluir o honorário. Tente novamente.' : 'Não foi possível excluir a despesa. Tente novamente.';
+      addToast(getErrorMessage(error, fallback), 'error');
     }
-    setDeletingEntry(null);
   };
 
   const getFeeStatusColor = (status: FeeStatus) => {

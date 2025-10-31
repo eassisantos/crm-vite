@@ -10,6 +10,9 @@ import { useToast } from '../context/ToastContext';
 import { Link } from 'react-router-dom';
 import ConfirmationModal from '../components/common/ConfirmationModal';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 export default function Clients() {
   const { clients, addClient, updateClient, deleteClient } = useClients();
   const { cases, saveCase } = useCases();
@@ -57,15 +60,20 @@ export default function Clients() {
     setEditingClient(null);
   };
 
-  const handleSaveClient = (clientData: Omit<Client, 'id' | 'createdAt'> | Client) => {
-    if ('id' in clientData) {
-      updateClient(clientData);
-      addToast('Cliente atualizado com sucesso!', 'success');
-    } else {
-      addClient(clientData);
-      addToast('Cliente adicionado com sucesso!', 'success');
+  const handleSaveClient = async (clientData: Omit<Client, 'id' | 'createdAt'> | Client) => {
+    try {
+      if ('id' in clientData) {
+        await updateClient(clientData);
+        addToast('Cliente atualizado com sucesso!', 'success');
+      } else {
+        await addClient(clientData);
+        addToast('Cliente adicionado com sucesso!', 'success');
+      }
+      handleCloseFormModal();
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível salvar o cliente. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível salvar o cliente. Tente novamente.');
     }
-    handleCloseFormModal();
   };
 
   const handleDeleteRequest = (client: Client) => {
@@ -73,11 +81,17 @@ export default function Clients() {
     setIsConfirmModalOpen(true);
   };
 
-  const confirmDeleteClient = () => {
-    if (clientToDelete) {
-        deleteClient(clientToDelete.id);
-        addToast('Cliente excluído com sucesso.', 'info');
-        setClientToDelete(null);
+  const confirmDeleteClient = async () => {
+    if (!clientToDelete) {
+      return;
+    }
+    try {
+      await deleteClient(clientToDelete.id);
+      addToast('Cliente excluído com sucesso.', 'info');
+      setClientToDelete(null);
+      setIsConfirmModalOpen(false);
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível excluir o cliente. Tente novamente.'), 'error');
     }
   };
 
@@ -92,10 +106,15 @@ export default function Clients() {
   };
 
   const handleSaveCase = async (caseData: Omit<Case, 'id' | 'lastUpdate' | 'tasks' | 'aiSummary' | 'documents' | 'legalDocuments' | 'startDate'> | Case) => {
-    await saveCase(caseData as Case);
-    const clientName = clients.find(c => c.id === (caseData as any).clientId)?.name;
-    addToast(`Novo caso para ${clientName || 'cliente'} criado com sucesso!`, 'success');
-    handleCloseCaseModal();
+    try {
+      await saveCase(caseData as Case);
+      const clientName = clients.find(c => c.id === (caseData as any).clientId)?.name;
+      addToast(`Novo caso para ${clientName || 'cliente'} criado com sucesso!`, 'success');
+      handleCloseCaseModal();
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível criar o caso. Tente novamente.'), 'error');
+      throw error instanceof Error ? error : new Error('Não foi possível criar o caso. Tente novamente.');
+    }
   };
 
   return (

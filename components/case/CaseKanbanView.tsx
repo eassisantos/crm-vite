@@ -3,6 +3,10 @@ import { Case, CaseStatus } from '../../types';
 import { useClients } from '../../context/ClientsContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useCases } from '../../context/CasesContext';
+import { useToast } from '../../context/ToastContext';
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 import { Link } from 'react-router-dom';
 import { Gavel, Scale, User } from 'lucide-react';
 
@@ -97,16 +101,22 @@ interface CaseKanbanViewProps {
 const CaseKanbanView: React.FC<CaseKanbanViewProps> = ({ cases }) => {
   const { caseStatuses } = useSettings();
   const { saveCase } = useCases();
+  const { addToast } = useToast();
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, caseId: string) => {
     e.dataTransfer.setData('caseId', caseId);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, newStatus: CaseStatus) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>, newStatus: CaseStatus) => {
     const caseId = e.dataTransfer.getData('caseId');
     const caseToUpdate = cases.find(c => c.id === caseId);
     if (caseToUpdate && caseToUpdate.status !== newStatus) {
-      saveCase({ ...caseToUpdate, status: newStatus });
+      try {
+        await saveCase({ ...caseToUpdate, status: newStatus });
+        addToast('Status do caso atualizado!', 'success');
+      } catch (error) {
+        addToast(getErrorMessage(error, 'Não foi possível mover o caso. Tente novamente.'), 'error');
+      }
     }
   };
 
