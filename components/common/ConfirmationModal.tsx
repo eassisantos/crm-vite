@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
+import { useModalAccessibility } from '../../hooks/useModalAccessibility';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -20,6 +21,9 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   confirmText = 'Confirmar',
   cancelText = 'Cancelar',
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalAccessibility(isOpen, dialogRef, { onClose });
+
   if (!isOpen) return null;
 
   const handleConfirm = () => {
@@ -28,19 +32,32 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" aria-modal="true" role="dialog">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        className="relative bg-white rounded-lg shadow-xl w-full max-w-md focus:outline-none"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirmation-modal-title"
+        aria-describedby="confirmation-modal-description"
+        tabIndex={-1}
+      >
         <div className="p-6">
           <div className="flex items-start">
             <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
               <AlertTriangle className="h-6 w-6 text-red-600" aria-hidden="true" />
             </div>
             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-              <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+              <h3 className="text-lg leading-6 font-medium text-gray-900" id="confirmation-modal-title">
                 {title}
               </h3>
               <div className="mt-2">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500" id="confirmation-modal-description">
                   {message}
                 </p>
               </div>
@@ -63,6 +80,14 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             {cancelText}
           </button>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-full text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
+          aria-label="Fechar modal"
+        >
+          <X size={18} aria-hidden="true" />
+        </button>
       </div>
     </div>
   );
