@@ -11,6 +11,9 @@ import InstallmentManagerModal from '../components/financials/InstallmentManager
 import ConfirmationModal from '../components/common/ConfirmationModal';
 import ActionMenu, { ActionMenuItem } from '../components/common/ActionMenu';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string; color: string }> = ({ icon, title, value, color }) => (
   <div className="bg-white p-6 rounded-xl shadow-sm flex items-center">
     <div className={`p-3 rounded-full mr-4 ${color}`}>{icon}</div>
@@ -54,42 +57,53 @@ export default function Financials() {
     setIsModalOpen(true);
   };
 
-  const handleSaveEntry = (data: Omit<Fee, 'id'> | Omit<Expense, 'id'> | Fee | Expense) => {
-    if ('id' in data) { // Update
-      if ('dueDate' in data) {
-        updateFee(data as Fee);
-        addToast('Honorário atualizado!', 'success');
-      } else {
-        updateExpense(data as Expense);
-        addToast('Despesa atualizada!', 'success');
+  const handleSaveEntry = async (data: Omit<Fee, 'id'> | Omit<Expense, 'id'> | Fee | Expense) => {
+    try {
+      if ('id' in data) { // Update
+        if ('dueDate' in data) {
+          await updateFee(data as Fee);
+          addToast('Honorário atualizado!', 'success');
+        } else {
+          await updateExpense(data as Expense);
+          addToast('Despesa atualizada!', 'success');
+        }
+      } else { // Create
+        if ('dueDate' in data) {
+          await addFee(data as Omit<Fee, 'id'>);
+          addToast('Novo honorário adicionado!', 'success');
+        } else {
+          await addExpense(data as Omit<Expense, 'id'>);
+          addToast('Nova despesa adicionada!', 'success');
+        }
       }
-    } else { // Create
-      if ('dueDate' in data) {
-        addFee(data as Omit<Fee, 'id'>);
-        addToast('Novo honorário adicionado!', 'success');
-      } else {
-        addExpense(data as Omit<Expense, 'id'>);
-        addToast('Nova despesa adicionada!', 'success');
-      }
+      setIsModalOpen(false);
+      setEditingEntry(null);
+    } catch (error) {
+      const fallback = 'dueDate' in data ? 'Não foi possível salvar o honorário. Tente novamente.' : 'Não foi possível salvar a despesa. Tente novamente.';
+      addToast(getErrorMessage(error, fallback), 'error');
+      throw error instanceof Error ? error : new Error(fallback);
     }
-    setIsModalOpen(false);
-    setEditingEntry(null);
   };
 
   const handleDeleteRequest = (entry: Fee | Expense) => {
     setDeletingEntry(entry);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deletingEntry) return;
-    if ('dueDate' in deletingEntry) {
-      deleteFee(deletingEntry.id);
-      addToast('Honorário excluído.', 'info');
-    } else {
-      deleteExpense(deletingEntry.id);
-      addToast('Despesa excluída.', 'info');
+    try {
+      if ('dueDate' in deletingEntry) {
+        await deleteFee(deletingEntry.id);
+        addToast('Honorário excluído.', 'info');
+      } else {
+        await deleteExpense(deletingEntry.id);
+        addToast('Despesa excluída.', 'info');
+      }
+      setDeletingEntry(null);
+    } catch (error) {
+      const fallback = 'dueDate' in deletingEntry ? 'Não foi possível excluir o honorário. Tente novamente.' : 'Não foi possível excluir a despesa. Tente novamente.';
+      addToast(getErrorMessage(error, fallback), 'error');
     }
-    setDeletingEntry(null);
   };
 
   const handleFeeStatusChange = (fee: Fee, newStatus: FeeStatus) => {
@@ -97,8 +111,12 @@ export default function Financials() {
         addToast('Status de honorários parcelados é gerenciado na tela de parcelas.', 'info');
         return;
     }
-    updateFee({ ...fee, status: newStatus });
-    addToast('Status do honorário atualizado.', 'success');
+    try {
+      await updateFee({ ...fee, status: newStatus });
+      addToast('Status do honorário atualizado.', 'success');
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível atualizar o status do honorário. Tente novamente.'), 'error');
+    }
   };
 
   return (

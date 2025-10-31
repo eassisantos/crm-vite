@@ -16,9 +16,14 @@ const InstallmentManagerModal: React.FC<InstallmentManagerModalProps> = ({ fee, 
 
   if (!fee.installments) return null;
 
-  const handleStatusChange = (installmentId: string, newStatus: 'Pago' | 'Pendente') => {
-    updateInstallmentStatus(fee.id, installmentId, newStatus);
-    addToast('Status da parcela atualizado!', 'success');
+  const handleStatusChange = async (installmentId: string, newStatus: 'Pago' | 'Pendente') => {
+    try {
+      await updateInstallmentStatus(fee.id, installmentId, newStatus);
+      addToast('Status da parcela atualizado!', 'success');
+    } catch (error) {
+      const message = error instanceof Error && error.message ? error.message : 'Não foi possível atualizar o status da parcela. Tente novamente.';
+      addToast(message, 'error');
+    }
   };
 
   const paidAmount = fee.installments.filter(i => i.status === 'Pago').reduce((sum, i) => sum + i.amount, 0);

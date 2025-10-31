@@ -11,7 +11,7 @@ type CaseFormData = Omit<Case, 'id' | 'lastUpdate' | 'tasks' | 'aiSummary' | 'do
 interface CaseFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (caseData: CaseFormData | Case) => void;
+  onSave: (caseData: CaseFormData | Case) => Promise<void> | void;
   initialData: Case | null;
   preselectedClientId?: string;
 }
@@ -59,7 +59,7 @@ const CaseFormModal: React.FC<CaseFormModalProps> = ({ isOpen, onClose, onSave, 
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.clientId) {
         addToast("Por favor, selecione um cliente.", "error");
@@ -69,8 +69,13 @@ const CaseFormModal: React.FC<CaseFormModalProps> = ({ isOpen, onClose, onSave, 
         addToast("Por favor, insira um título para o caso.", "error");
         return;
     }
-    onSave(initialData ? { ...initialData, ...formData } : formData);
-    onClose();
+    try {
+      await onSave(initialData ? { ...initialData, ...formData } : formData);
+      onClose();
+    } catch (error) {
+      // O componente pai lida com o feedback de erro.
+      console.error('Erro ao salvar caso pelo modal.', error);
+    }
   };
 
   if (!isOpen) return null;

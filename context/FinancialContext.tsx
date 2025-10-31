@@ -48,6 +48,14 @@ export const FinancialProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [expenses, setExpenses] = useLocalStorage<Expense[]>('crm_expenses', mockExpenses);
   const { cases } = useCases();
 
+  const handleOperationError = (error: unknown, fallbackMessage: string): never => {
+    console.error(fallbackMessage, error);
+    if (error instanceof Error && error.message) {
+      throw new Error(error.message);
+    }
+    throw new Error(fallbackMessage);
+  };
+
   const getFinancialsByCaseId = useCallback((caseId: string) => {
     const caseFees = fees.filter(f => f.caseId === caseId);
     const caseExpenses = expenses.filter(e => e.caseId === caseId);
@@ -79,70 +87,106 @@ export const FinancialProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [fees, expenses]);
 
   const addFee = useCallback(async (feeData: Omit<Fee, 'id'>) => {
-    const newFee: Fee = { ...feeData, id: `fee-${Date.now()}` };
-    await fakeApiCall(null);
-    setFees(prev => [...prev, newFee]);
+    try {
+      const newFee: Fee = { ...feeData, id: `fee-${Date.now()}` };
+      await fakeApiCall(null);
+      setFees(prev => [...prev, newFee]);
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível adicionar o honorário. Tente novamente.');
+    }
   }, [setFees]);
 
   const updateFee = useCallback(async (fee: Fee) => {
-    await fakeApiCall(null);
-    setFees(prev => prev.map(f => (f.id === fee.id ? fee : f)));
+    try {
+      await fakeApiCall(null);
+      setFees(prev => prev.map(f => (f.id === fee.id ? fee : f)));
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível atualizar o honorário. Tente novamente.');
+    }
   }, [setFees]);
 
   const deleteFee = useCallback(async (feeId: string) => {
-    await fakeApiCall(null);
-    setFees(prev => prev.filter(f => f.id !== feeId));
+    try {
+      await fakeApiCall(null);
+      setFees(prev => prev.filter(f => f.id !== feeId));
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível remover o honorário. Tente novamente.');
+    }
   }, [setFees]);
 
   const addExpense = useCallback(async (expenseData: Omit<Expense, 'id'>) => {
-    const newExpense: Expense = { ...expenseData, id: `exp-${Date.now()}` };
-    await fakeApiCall(null);
-    setExpenses(prev => [...prev, newExpense]);
+    try {
+      const newExpense: Expense = { ...expenseData, id: `exp-${Date.now()}` };
+      await fakeApiCall(null);
+      setExpenses(prev => [...prev, newExpense]);
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível adicionar a despesa. Tente novamente.');
+    }
   }, [setExpenses]);
 
   const updateExpense = useCallback(async (expense: Expense) => {
-    await fakeApiCall(null);
-    setExpenses(prev => prev.map(e => (e.id === expense.id ? expense : e)));
+    try {
+      await fakeApiCall(null);
+      setExpenses(prev => prev.map(e => (e.id === expense.id ? expense : e)));
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível atualizar a despesa. Tente novamente.');
+    }
   }, [setExpenses]);
 
   const deleteExpense = useCallback(async (expenseId: string) => {
-    await fakeApiCall(null);
-    setExpenses(prev => prev.filter(e => e.id !== expenseId));
+    try {
+      await fakeApiCall(null);
+      setExpenses(prev => prev.filter(e => e.id !== expenseId));
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível remover a despesa. Tente novamente.');
+    }
   }, [setExpenses]);
 
   const updateInstallmentStatus = useCallback(async (feeId: string, installmentId: string, newStatus: 'Pago' | 'Pendente') => {
-    await fakeApiCall(null);
-    setFees(prevFees =>
-      prevFees.map(fee => {
-        if (fee.id !== feeId || !fee.installments) {
-          return fee;
-        }
-        const installments = fee.installments.map(inst => (inst.id === installmentId ? { ...inst, status: newStatus } : inst));
-        const paidCount = installments.filter(i => i.status === 'Pago').length;
-        let nextStatus = FeeStatus.PENDENTE;
-        if (paidCount === installments.length) {
-          nextStatus = FeeStatus.PAGO;
-        } else if (paidCount > 0) {
-          nextStatus = FeeStatus.PARCIALMENTE_PAGO;
-        }
-        return { ...fee, installments, status: nextStatus };
-      }),
-    );
+    try {
+      await fakeApiCall(null);
+      setFees(prevFees =>
+        prevFees.map(fee => {
+          if (fee.id !== feeId || !fee.installments) {
+            return fee;
+          }
+          const installments = fee.installments.map(inst => (inst.id === installmentId ? { ...inst, status: newStatus } : inst));
+          const paidCount = installments.filter(i => i.status === 'Pago').length;
+          let nextStatus = FeeStatus.PENDENTE;
+          if (paidCount === installments.length) {
+            nextStatus = FeeStatus.PAGO;
+          } else if (paidCount > 0) {
+            nextStatus = FeeStatus.PARCIALMENTE_PAGO;
+          }
+          return { ...fee, installments, status: nextStatus };
+        }),
+      );
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível atualizar o status da parcela. Tente novamente.');
+    }
   }, [setFees]);
 
   const removeFinancialsByCaseIds = useCallback(async (caseIds: string[]) => {
     if (caseIds.length === 0) {
       return;
     }
-    await fakeApiCall(null);
-    setFees(prev => prev.filter(f => !caseIds.includes(f.caseId)));
-    setExpenses(prev => prev.filter(e => !caseIds.includes(e.caseId)));
+    try {
+      await fakeApiCall(null);
+      setFees(prev => prev.filter(f => !caseIds.includes(f.caseId)));
+      setExpenses(prev => prev.filter(e => !caseIds.includes(e.caseId)));
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível remover os dados financeiros associados aos casos. Tente novamente.');
+    }
   }, [setFees, setExpenses]);
 
   const resetFinancials = useCallback(async () => {
-    await fakeApiCall(null);
-    setFees(mockFees);
-    setExpenses(mockExpenses);
+    try {
+      await fakeApiCall(null);
+      setFees(mockFees);
+      setExpenses(mockExpenses);
+    } catch (error) {
+      handleOperationError(error, 'Não foi possível restaurar os dados financeiros padrão. Tente novamente.');
+    }
   }, [setFees, setExpenses]);
 
   const value = useMemo(() => ({

@@ -8,6 +8,9 @@ import ConfirmationModal from '../common/ConfirmationModal';
 import { classifyDocument } from '../../services/geminiService';
 import * as pdfjsLib from 'pdfjs-dist';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
 interface DocumentManagerProps {
   caseData: Case;
   clientBenefitType: string;
@@ -62,8 +65,13 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
         url: URL.createObjectURL(file), // Placeholder URL
         type: getFileType(fileName),
     };
-    await addDocumentToCase(caseData.id, newDocument);
-    addToast(`Documento "${fileName}" adicionado com sucesso!`, 'success');
+    try {
+      await addDocumentToCase(caseData.id, newDocument);
+      addToast(`Documento "${fileName}" adicionado com sucesso!`, 'success');
+    } catch (error) {
+      addToast(getErrorMessage(error, `Não foi possível adicionar o documento "${fileName}". Tente novamente.`), 'error');
+      throw error instanceof Error ? error : new Error(`Não foi possível adicionar o documento "${fileName}". Tente novamente.`);
+    }
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,7 +80,11 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
 
     if (uploadingDocName) {
         const newFileName = `${uploadingDocName.replace(/ /g, '_').toLowerCase()}_${Date.now()}.${file.name.split('.').pop()}`;
-        saveDocument(file, newFileName);
+        try {
+          await saveDocument(file, newFileName);
+        } catch (error) {
+          console.error('Erro ao salvar documento vinculado ao checklist.', error);
+        }
     } else {
         setIsAnalyzing(true);
         setAnalysisSuggestion(null);
@@ -110,13 +122,17 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
             if (suggestedCategory && suggestedCategory !== 'Outro') {
                 setAnalysisSuggestion({ file, suggestedCategory });
             } else {
-                saveDocument(file, file.name);
+                await saveDocument(file, file.name);
                 addToast('Documento adicionado. A IA não sugeriu uma categoria.', 'info');
             }
         } catch (error) {
             console.error("Error during document analysis:", error);
             addToast('Erro ao analisar o documento. Enviando como avulso.', 'error');
-            saveDocument(file, file.name);
+            try {
+              await saveDocument(file, file.name);
+            } catch (innerError) {
+              console.error('Erro ao salvar documento após falha na análise.', innerError);
+            }
         } finally {
             setIsAnalyzing(false);
         }
@@ -128,9 +144,13 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
 
   const confirmDelete = async () => {
     if (docToDelete) {
+      try {
         await deleteDocumentFromCase(caseData.id, docToDelete.name);
         addToast(`Documento "${docToDelete.name}" excluído.`, 'info');
         setDocToDelete(null);
+      } catch (error) {
+        addToast(getErrorMessage(error, 'Não foi possível excluir o documento. Tente novamente.'), 'error');
+      }
     }
   };
 
@@ -138,16 +158,20 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
     if (!analysisSuggestion) return;
     const { file, suggestedCategory } = analysisSuggestion;
     const newFileName = `${suggestedCategory.replace(/ /g, '_').toLowerCase()}_${Date.now()}.${file.name.split('.').pop()}`;
-    saveDocument(file, newFileName);
-    setAnalysisSuggestion(null);
+    saveDocument(file, newFileName)
+      .then(() => setAnalysisSuggestion(null))
+      .catch(error => console.error('Erro ao salvar documento sugerido.', error));
   };
 
   const handleIgnoreSuggestion = () => {
       if (!analysisSuggestion) return;
       const { file } = analysisSuggestion;
-      saveDocument(file, file.name);
-      addToast('Sugestão ignorada. Documento salvo com nome original.', 'info');
-      setAnalysisSuggestion(null);
+      saveDocument(file, file.name)
+        .then(() => {
+          addToast('Sugestão ignorada. Documento salvo com nome original.', 'info');
+          setAnalysisSuggestion(null);
+        })
+        .catch(error => console.error('Erro ao salvar documento após ignorar sugestão.', error));
   };
 
   const docsForBenefit = documentChecklistConfig[clientBenefitType] || documentChecklistConfig["Outro"] || [];

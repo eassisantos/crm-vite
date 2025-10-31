@@ -4,6 +4,9 @@ import { X, Bot, Loader2, FileText, AlertTriangle, User, FileBadge, MapPin, Shie
 import { extractClientInfoFromDocument, extractClientInfoFromImage } from '../../services/geminiService';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useToast } from '../../context/ToastContext';
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
 import FormField from './FormField';
 import { useSettings } from '../../context/SettingsContext';
 import { useClients } from '../../context/ClientsContext';
@@ -13,7 +16,7 @@ import { maskPhone, maskCpf, maskCep } from '../../utils/masks';
 interface ClientFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (client: Omit<Client, 'id' | 'createdAt'> | Client) => void;
+  onSave: (client: Omit<Client, 'id' | 'createdAt'> | Client) => Promise<void> | void;
   initialData: Client | null;
 }
 
@@ -281,16 +284,24 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
     }
   };
 
-  const handleSaveAndClose = () => {
-    onSave(initialData ? { ...initialData, ...formData } : formData);
-    onClose();
+  const handleSaveAndClose = async () => {
+    try {
+      await onSave(initialData ? { ...initialData, ...formData } : formData);
+      onClose();
+    } catch (error) {
+      console.error('Erro ao salvar cliente pelo modal.', error);
+    }
   };
 
   const handleSaveAndCreateCase = async () => {
-    const savedClient = await addClient(formData);
-    setNewlyCreatedClient(savedClient);
-    setStep('caseDetails');
-    addToast(`Cliente ${savedClient.name} salvo. Agora, crie o primeiro caso.`, 'success');
+    try {
+      const savedClient = await addClient(formData);
+      setNewlyCreatedClient(savedClient);
+      setStep('caseDetails');
+      addToast(`Cliente ${savedClient.name} salvo. Agora, crie o primeiro caso.`, 'success');
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível salvar o cliente. Tente novamente.'), 'error');
+    }
   };
 
   const handleSaveCase = async () => {
@@ -299,12 +310,16 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
         addToast("O título do caso é obrigatório.", "error");
         return;
     }
-    await saveCase({
+    try {
+      await saveCase({
         ...caseFormData,
         clientId: newlyCreatedClient.id,
-    });
-    addToast(`Caso "${caseFormData.title}" criado com sucesso para ${newlyCreatedClient.name}!`, 'success');
-    onClose();
+      });
+      addToast(`Caso "${caseFormData.title}" criado com sucesso para ${newlyCreatedClient.name}!`, 'success');
+      onClose();
+    } catch (error) {
+      addToast(getErrorMessage(error, 'Não foi possível criar o caso. Tente novamente.'), 'error');
+    }
   };
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>, isRep = false) => {
