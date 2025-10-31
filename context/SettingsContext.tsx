@@ -34,6 +34,7 @@ interface SettingsContextValue {
   documentTemplates: DocumentTemplate[];
   benefitTypes: string[];
   caseStatuses: CaseStatus[];
+  sidebarStatus: CaseStatus;
   documentChecklistConfig: DocumentChecklistConfig;
   firmInfo: FirmInfo;
   brandingSettings: BrandingSettings;
@@ -43,6 +44,7 @@ interface SettingsContextValue {
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
   setDensity: (density: DensityMode) => void;
+  setSidebarStatus: (status: CaseStatus) => void;
   addTemplate: (templateData: Omit<DocumentTemplate, 'id'>) => Promise<void>;
   updateTemplate: (template: DocumentTemplate) => Promise<void>;
   deleteTemplate: (templateId: string) => Promise<void>;
@@ -138,6 +140,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     'crm_notificationSettings',
     mockNotificationSettings,
   );
+  const [sidebarStatus, setSidebarStatus] = useLocalStorage<CaseStatus>('crm_sidebarStatus', initialCaseStatuses[0]);
 
   const addTemplate = useCallback(async (templateData: Omit<DocumentTemplate, 'id'>) => {
     const newTemplate: DocumentTemplate = { ...templateData, id: `template-${Date.now()}` };
@@ -228,12 +231,23 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     setFirmInfo(mockFirmInfo);
     setBrandingSettings(mockBrandingSettings);
     setNotificationSettings(mockNotificationSettings);
-  }, [setDocumentTemplates, setBenefitTypes, setCaseStatuses, setDocumentChecklistConfig, setFirmInfo, setBrandingSettings, setNotificationSettings]);
+    setSidebarStatus(initialCaseStatuses[0]);
+  }, [
+    setDocumentTemplates,
+    setBenefitTypes,
+    setCaseStatuses,
+    setDocumentChecklistConfig,
+    setFirmInfo,
+    setBrandingSettings,
+    setNotificationSettings,
+    setSidebarStatus,
+  ]);
 
   const value = useMemo(() => ({
     documentTemplates,
     benefitTypes,
     caseStatuses,
+    sidebarStatus,
     documentChecklistConfig,
     firmInfo,
     brandingSettings,
@@ -243,6 +257,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     setTheme,
     toggleTheme,
     setDensity,
+    setSidebarStatus,
     addTemplate,
     updateTemplate,
     deleteTemplate,
@@ -259,6 +274,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     documentTemplates,
     benefitTypes,
     caseStatuses,
+    sidebarStatus,
     documentChecklistConfig,
     firmInfo,
     brandingSettings,
@@ -268,6 +284,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     setTheme,
     toggleTheme,
     setDensity,
+    setSidebarStatus,
     addTemplate,
     updateTemplate,
     deleteTemplate,
