@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, Briefcase, Scale, Calendar, FileText, DollarSign, Settings, X } from 'lucide-react';
 import { useSettings } from '../../context/SettingsContext';
+import useBreakpoint from '../../hooks/useBreakpoint';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -28,16 +29,18 @@ const NavItem: React.FC<{ to: string; icon: React.ReactNode; label: string; onCl
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { brandingSettings, firmInfo } = useSettings();
+  const isCollapsed = useBreakpoint(1024, 'max');
+  const shouldShowSidebar = !isCollapsed || isOpen;
 
   return (
     <>
         {/* Overlay for mobile */}
-        <div 
-            className={`fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        <div
+            className={`fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden transition-opacity ${shouldShowSidebar ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             onClick={onClose}
         ></div>
 
-        <aside className={`fixed inset-y-0 left-0 w-64 bg-slate-800 text-white flex flex-col p-4 transform transition-transform duration-300 ease-in-out z-30 ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 lg:w-64 lg:flex-shrink-0`}>
+        <aside className={`fixed inset-y-0 left-0 w-64 bg-slate-800 text-white flex flex-col p-4 transform transition-transform duration-300 ease-in-out z-30 ${shouldShowSidebar ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 lg:w-64 lg:flex-shrink-0`}>
             <div className="flex items-center justify-between mb-6 px-2 h-16 border-b border-slate-700 -m-4 p-4">
                 <div className="flex items-center min-w-0">
                     {brandingSettings.logo ? (
