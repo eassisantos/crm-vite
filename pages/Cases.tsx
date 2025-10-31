@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Case, CaseStatus, Client } from '../types';
+import { Case, CaseStatus } from '../types';
 import { Plus, Search, ChevronDown, Edit, XCircle, Scale, Gavel, LayoutGrid, List } from 'lucide-react';
-import { useCrmData } from '../context/CrmContext';
+import { useCases } from '../context/CasesContext';
+import { useClients } from '../context/ClientsContext';
 import { useToast } from '../context/ToastContext';
 import CaseFormModal from '../components/case/CaseFormModal';
 import CaseKanbanView from '../components/case/CaseKanbanView';
@@ -43,7 +44,8 @@ const NatureBadge: React.FC<{ nature: 'Judicial' | 'Administrativo' }> = ({ natu
 };
 
 export default function Cases() {
-  const { cases, getClientById, saveCase } = useCrmData();
+  const { cases, saveCase } = useCases();
+  const { getClientById } = useClients();
   const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Case, DocumentTemplate, LegalDocument } from '../../types';
-import { useCrmData } from '../../context/CrmContext';
+import { useCases } from '../../context/CasesContext';
+import { useSettings } from '../../context/SettingsContext';
 import { FileSignature, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import GenerateDocumentModal from '../documents/GenerateDocumentModal';
 
@@ -9,7 +10,8 @@ interface LegalDocumentsManagerProps {
 }
 
 const LegalDocumentsManager: React.FC<LegalDocumentsManagerProps> = ({ caseData }) => {
-  const { documentTemplates, updateCaseLegalDocumentStatus } = useCrmData();
+  const { updateCaseLegalDocumentStatus } = useCases();
+  const { documentTemplates } = useSettings();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
 

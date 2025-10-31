@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DocumentTemplate, Client, Case } from '../../types';
-import { useCrmData } from '../../context/CrmContext';
+import { useClients } from '../../context/ClientsContext';
+import { useCases } from '../../context/CasesContext';
+import { useSettings } from '../../context/SettingsContext';
 import { X, Copy, Printer, Info } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { copyToClipboard } from '../../utils/clipboard';
@@ -50,7 +52,9 @@ const replacePlaceholders = (content: string, client: Client, firmInfo: any, cas
 };
 
 const GenerateDocumentModal: React.FC<GenerateDocumentModalProps> = ({ isOpen, onClose, template, preselectedClientId, preselectedCaseId, onGenerationComplete }) => {
-  const { clients, cases, firmInfo } = useCrmData();
+  const { clients } = useClients();
+  const { cases } = useCases();
+  const { firmInfo } = useSettings();
   const { addToast } = useToast();
   const [selectedClientId, setSelectedClientId] = useState<string>(preselectedClientId || '');
   const [selectedCaseId, setSelectedCaseId] = useState<string>(preselectedCaseId || '');

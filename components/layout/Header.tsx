@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, User, Bell, Search } from 'lucide-react';
 import NotificationsDropdown from './NotificationsDropdown';
-import { useCrmData } from '../../context/CrmContext';
+import { useCases } from '../../context/CasesContext';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -10,7 +10,7 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick, onSearchClick }: HeaderProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const { getUrgentTasks } = useCrmData();
+  const { getUrgentTasks } = useCases();
   const urgentTasksCount = getUrgentTasks().length;
   const notificationsRef = useRef<HTMLDivElement>(null);
 

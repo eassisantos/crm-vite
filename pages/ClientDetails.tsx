@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useCrmData } from '../context/CrmContext';
+import { useClients } from '../context/ClientsContext';
+import { useCases } from '../context/CasesContext';
 import { Client, Case, CaseStatus } from '../types';
 import { ArrowLeft, User, Mail, Phone, Home, Edit, PlusCircle, Briefcase, Gavel, Scale } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
@@ -32,7 +33,8 @@ const StatusBadge = ({ status }: { status: CaseStatus }) => (
 
 const ClientDetails: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
-  const { getClientById, cases, updateClient, saveCase } = useCrmData();
+  const { getClientById, updateClient } = useClients();
+  const { cases, saveCase } = useCases();
   const { addToast } = useToast();
   const navigate = useNavigate();
 

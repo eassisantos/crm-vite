@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useCrmData } from '../context/CrmContext';
+import { useSettings } from '../context/SettingsContext';
 import { DocumentTemplate } from '../types';
 import { FileText, FileSignature, PlusCircle, Edit, Trash2, Info } from 'lucide-react';
 import GenerateDocumentModal from '../components/documents/GenerateDocumentModal';
@@ -13,7 +13,7 @@ type ModalState = {
 } | null;
 
 export default function DocumentTemplates() {
-  const { documentTemplates, deleteTemplate } = useCrmData();
+  const { documentTemplates, deleteTemplate } = useSettings();
   const { addToast } = useToast();
   const [modalState, setModalState] = useState<ModalState>(null);
 

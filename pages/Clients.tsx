@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { useCrmData } from '../context/CrmContext';
+import { useClients } from '../context/ClientsContext';
+import { useCases } from '../context/CasesContext';
 import { PlusCircle, Edit, Trash2, Briefcase, Search, UserPlus } from 'lucide-react';
 import ClientFormModal from '../components/client/ClientFormModal';
 import CaseFormModal from '../components/case/CaseFormModal';
@@ -10,7 +11,8 @@ import { Link } from 'react-router-dom';
 import ConfirmationModal from '../components/common/ConfirmationModal';
 
 export default function Clients() {
-  const { clients, cases, addClient, updateClient, deleteClient, saveCase } = useCrmData();
+  const { clients, addClient, updateClient, deleteClient } = useClients();
+  const { cases, saveCase } = useCases();
   const { addToast } = useToast();
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);

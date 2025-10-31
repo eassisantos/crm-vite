@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useCrmData } from '../context/CrmContext';
+import { useSettings } from '../context/SettingsContext';
+import { useReset } from '../context/ResetContext';
 import { useToast } from '../context/ToastContext';
 import { Settings, Tag, Plus, Trash2, ListChecks, Type, FileCheck, Briefcase, Bell, Database, AlertTriangle, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { CaseStatus, FirmInfo, BrandingSettings, NotificationSettings } from '../types';
@@ -49,7 +50,7 @@ const CustomizationList: React.FC<{ title: string; items: string[]; onAdd: (item
 };
 
 const ChecklistManager: React.FC = () => {
-    const { benefitTypes, documentChecklistConfig, updateChecklistItem } = useCrmData();
+    const { benefitTypes, documentChecklistConfig, updateChecklistItem } = useSettings();
     const { addToast } = useToast();
     const [selectedBenefit, setSelectedBenefit] = useState(benefitTypes[0] || '');
     const [newItem, setNewItem] = useState('');
@@ -96,7 +97,8 @@ const ChecklistManager: React.FC = () => {
 };
 
 export default function Configuracoes() {
-    const { firmInfo, brandingSettings, notificationSettings, updateFirmInfo, updateBrandingSettings, updateNotificationSettings, benefitTypes, caseStatuses, addBenefitType, addCaseStatus, removeBenefitType, removeCaseStatus, resetAllData, documentChecklistConfig, updateChecklistItem } = useCrmData();
+    const { firmInfo, brandingSettings, notificationSettings, updateFirmInfo, updateBrandingSettings, updateNotificationSettings, benefitTypes, caseStatuses, addBenefitType, addCaseStatus, removeBenefitType, removeCaseStatus } = useSettings();
+    const { resetAllData } = useReset();
     const { addToast } = useToast();
     const [isSaving, setIsSaving] = useState(false);
     const [isResetting, setIsResetting] = useState(false);

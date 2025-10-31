@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCrmData } from '../../context/CrmContext';
+import { useCases } from '../../context/CasesContext';
 import { Link } from 'react-router-dom';
 import { Bell, CalendarClock, CheckCircle } from 'lucide-react';
 
@@ -9,7 +9,7 @@ interface NotificationsDropdownProps {
 }
 
 const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ isOpen, onClose }) => {
-  const { getUrgentTasks, getCaseById } = useCrmData();
+  const { getUrgentTasks, getCaseById } = useCases();
   const urgentTasks = getUrgentTasks();
 
   if (!isOpen) return null;

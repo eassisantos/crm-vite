@@ -5,7 +5,9 @@ import { extractClientInfoFromDocument, extractClientInfoFromImage } from '../..
 import * as pdfjsLib from 'pdfjs-dist';
 import { useToast } from '../../context/ToastContext';
 import FormField from './FormField';
-import { useCrmData } from '../../context/CrmContext';
+import { useSettings } from '../../context/SettingsContext';
+import { useClients } from '../../context/ClientsContext';
+import { useCases } from '../../context/CasesContext';
 import { maskPhone, maskCpf, maskCep } from '../../utils/masks';
 
 interface ClientFormModalProps {
@@ -60,7 +62,9 @@ const docTypes = [
 ];
 
 const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSave, initialData }) => {
-  const { benefitTypes, caseStatuses, addClient, saveCase } = useCrmData();
+  const { benefitTypes, caseStatuses } = useSettings();
+  const { addClient } = useClients();
+  const { saveCase } = useCases();
   const { addToast } = useToast();
 
   const [step, setStep] = useState<Step>('clientDetails');

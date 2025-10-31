@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Case, CaseDocument, DocumentFileType } from '../../types';
 import { CheckCircle, XCircle, Upload, File, FileText, FileImage, Trash2, Eye, Sparkles, Loader2 } from 'lucide-react';
-import { useCrmData } from '../../context/CrmContext';
+import { useCases } from '../../context/CasesContext';
+import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
 import ConfirmationModal from '../common/ConfirmationModal';
 import { classifyDocument } from '../../services/geminiService';
@@ -34,7 +35,8 @@ const getFileType = (fileName: string): DocumentFileType => {
 };
 
 const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenefitType }) => {
-  const { addDocumentToCase, deleteDocumentFromCase, documentChecklistConfig } = useCrmData();
+  const { addDocumentToCase, deleteDocumentFromCase } = useCases();
+  const { documentChecklistConfig } = useSettings();
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingDocName, setUploadingDocName] = useState<string | null>(null);

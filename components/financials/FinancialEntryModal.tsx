@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useCrmData } from '../../context/CrmContext';
+import { useCases } from '../../context/CasesContext';
 import { Fee, Expense, FeeType, FeeStatus } from '../../types';
 import { X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
@@ -17,7 +17,7 @@ interface FinancialEntryModalProps {
 }
 
 const FinancialEntryModal: React.FC<FinancialEntryModalProps> = ({ isOpen, onClose, onSave, initialData, entryType, preselectedCaseId }) => {
-  const { cases } = useCrmData();
+  const { cases } = useCases();
   const { addToast } = useToast();
   
   const isFee = entryType === 'fee';

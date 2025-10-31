@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DocumentTemplate } from '../../types';
-import { useCrmData } from '../../context/CrmContext';
+import { useSettings } from '../../context/SettingsContext';
 import { X, Image, Type, ListChecks } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import ImageUploader from './ImageUploader';
@@ -14,7 +14,7 @@ interface TemplateFormModalProps {
 }
 
 const TemplateFormModal: React.FC<TemplateFormModalProps> = ({ isOpen, onClose, initialData }) => {
-  const { addTemplate, updateTemplate } = useCrmData();
+  const { addTemplate, updateTemplate } = useSettings();
   const { addToast } = useToast();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
