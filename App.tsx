@@ -6,7 +6,7 @@ import Header from './components/layout/Header';
 import Dashboard from './pages/Dashboard';
 import Cases from './pages/Cases';
 import Clients from './pages/Clients';
-import { SettingsProvider } from './context/SettingsContext';
+import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { CasesProvider } from './context/CasesContext';
 import { FinancialProvider } from './context/FinancialContext';
 import { ClientsProvider } from './context/ClientsContext';
@@ -22,6 +22,7 @@ import Configuracoes from './pages/Configuracoes';
 import DeadlineAlertModal from './components/common/DeadlineAlertModal';
 import GlobalSearchModal from './components/search/GlobalSearchModal';
 import { useCases } from './context/CasesContext';
+import classNames from 'classnames';
 
 export default function App() {
   return (
@@ -51,6 +52,7 @@ const AppContent: React.FC = () => {
   });
   const [hasAcknowledgedCurrentUrgentTasks, setHasAcknowledgedCurrentUrgentTasks] = useState(false);
   const { getUrgentTasks } = useCases();
+  const { theme, density } = useSettings();
 
   const urgentTasks = useMemo(() => getUrgentTasks(), [getUrgentTasks]);
   const urgentSignature = useMemo(() => urgentTasks.map(task => task.id).join('|'), [urgentTasks]);
@@ -66,6 +68,38 @@ const AppContent: React.FC = () => {
       setIsDeadlineModalOpen(false);
     }
   }, [hasDismissedForToday, urgentTasks, hasAcknowledgedCurrentUrgentTasks]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const body = document.body;
+    body.classList.remove('theme-light', 'theme-dark');
+    body.classList.add(theme === 'dark' ? 'theme-dark' : 'theme-light');
+  }, [theme]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const body = document.body;
+    body.classList.remove('density-compact', 'density-default', 'density-spacious');
+    body.classList.add(`density-${density}`);
+  }, [density]);
+
+  const layoutClassName = classNames(
+    'app-shell grid min-h-screen w-full grid-cols-[auto,1fr] grid-rows-[auto,1fr] transition-colors duration-300',
+    {
+      'density-compact': density === 'compact',
+      'density-default': density === 'default',
+      'density-spacious': density === 'spacious',
+    },
+  );
+
+  const mainClassName = classNames(
+    'app-main col-start-2 row-start-2 h-full overflow-x-hidden overflow-y-auto rounded-tl-3xl',
+    'transition-[background-color,color,padding] duration-300',
+  );
 
   const handleCloseDeadlineModal = (dismiss: boolean) => {
     if (dismiss) {
@@ -87,24 +121,26 @@ const AppContent: React.FC = () => {
         urgentTasks={urgentTasks}
       />
       <GlobalSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
-      <div className="flex h-screen bg-slate-100">
-        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} onSearchClick={() => setIsSearchModalOpen(true)} />
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/casos" element={<Cases />} />
-              <Route path="/casos/:caseId" element={<CaseDetails />} />
-              <Route path="/clientes" element={<Clients />} />
-              <Route path="/clientes/:clientId" element={<ClientDetails />} />
-              <Route path="/agenda" element={<Agenda />} />
-              <Route path="/financeiro" element={<Financials />} />
-              <Route path="/modelos" element={<DocumentTemplates />} />
-              <Route path="/configuracoes" element={<Configuracoes />} />
-            </Routes>
-          </main>
+      <div className={layoutClassName}>
+        <div className="col-start-1 row-span-2">
+          <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
         </div>
+        <div className="col-start-2 row-start-1">
+          <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} onSearchClick={() => setIsSearchModalOpen(true)} />
+        </div>
+        <main className={mainClassName}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/casos" element={<Cases />} />
+            <Route path="/casos/:caseId" element={<CaseDetails />} />
+            <Route path="/clientes" element={<Clients />} />
+            <Route path="/clientes/:clientId" element={<ClientDetails />} />
+            <Route path="/agenda" element={<Agenda />} />
+            <Route path="/financeiro" element={<Financials />} />
+            <Route path="/modelos" element={<DocumentTemplates />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
+          </Routes>
+        </main>
       </div>
       <ToastContainer />
     </>

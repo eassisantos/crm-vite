@@ -6,6 +6,218 @@
     <title>CRM Jurídico AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+      :root {
+        color-scheme: light;
+        --color-app-background: #f1f5f9;
+        --color-surface: #ffffff;
+        --color-surface-muted: #f8fafc;
+        --color-border: rgba(15, 23, 42, 0.08);
+        --color-border-strong: rgba(15, 23, 42, 0.14);
+        --color-text-primary: #0f172a;
+        --color-text-secondary: #475569;
+        --color-accent: #0284c7;
+        --color-accent-contrast: #f8fafc;
+        --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.08);
+        --shadow-md: 0 16px 40px rgba(15, 23, 42, 0.12);
+        --transition-base: 0.2s ease-in-out;
+        --spacing-2xs: 0.25rem;
+        --spacing-xs: 0.5rem;
+        --spacing-sm: 0.75rem;
+        --spacing-md: 1rem;
+        --spacing-lg: 1.5rem;
+        --spacing-xl: 2rem;
+        --density-header-height: 4rem;
+        --density-header-padding-x: var(--spacing-lg);
+        --density-page-padding: var(--spacing-lg);
+        --density-control-gap: var(--spacing-md);
+      }
+
+      .theme-dark {
+        color-scheme: dark;
+        --color-app-background: #0f172a;
+        --color-surface: #1e293b;
+        --color-surface-muted: rgba(148, 163, 184, 0.12);
+        --color-border: rgba(148, 163, 184, 0.24);
+        --color-border-strong: rgba(148, 163, 184, 0.35);
+        --color-text-primary: #f8fafc;
+        --color-text-secondary: #cbd5f5;
+        --color-accent: #38bdf8;
+        --color-accent-contrast: #0f172a;
+        --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.4);
+        --shadow-md: 0 24px 48px rgba(15, 23, 42, 0.45);
+      }
+
+      .density-compact {
+        --density-header-height: 3.5rem;
+        --density-header-padding-x: var(--spacing-md);
+        --density-page-padding: var(--spacing-md);
+        --density-control-gap: var(--spacing-sm);
+      }
+
+      .density-default {
+        --density-header-height: 4rem;
+        --density-header-padding-x: var(--spacing-lg);
+        --density-page-padding: var(--spacing-lg);
+        --density-control-gap: var(--spacing-md);
+      }
+
+      .density-spacious {
+        --density-header-height: 4.5rem;
+        --density-header-padding-x: calc(var(--spacing-xl) - 0.25rem);
+        --density-page-padding: calc(var(--spacing-xl) + 0.5rem);
+        --density-control-gap: calc(var(--spacing-md) + var(--spacing-2xs));
+      }
+
+      body {
+        background-color: var(--color-app-background);
+        color: var(--color-text-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      .app-shell {
+        background-color: var(--color-app-background);
+        color: var(--color-text-primary);
+      }
+
+      .app-header {
+        background-color: var(--color-surface);
+        box-shadow: var(--shadow-sm);
+        border-bottom: 1px solid var(--color-border);
+        height: var(--density-header-height);
+        padding: 0 var(--density-header-padding-x);
+      }
+
+      .app-main {
+        background-color: var(--color-surface-muted);
+        padding: var(--density-page-padding);
+      }
+
+      .app-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--density-control-gap);
+      }
+
+      .bg-surface {
+        background-color: var(--color-surface);
+      }
+
+      .bg-surface-muted {
+        background-color: var(--color-surface-muted);
+      }
+
+      .text-primary {
+        color: var(--color-text-primary);
+      }
+
+      .text-secondary {
+        color: var(--color-text-secondary);
+      }
+
+      .border-subtle {
+        border-color: var(--color-border);
+      }
+
+      .shadow-soft {
+        box-shadow: var(--shadow-sm);
+      }
+
+      .hover\:bg-surface-muted:hover {
+        background-color: var(--color-surface-muted);
+      }
+
+      .hover\:text-primary:hover {
+        color: var(--color-text-primary);
+      }
+
+      .icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        padding: var(--spacing-xs);
+        color: var(--color-text-secondary);
+        transition: background-color var(--transition-base), color var(--transition-base), transform var(--transition-base);
+      }
+
+      .icon-button:hover {
+        background-color: var(--color-surface-muted);
+        color: var(--color-text-primary);
+        transform: translateY(-1px);
+      }
+
+      .icon-button:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+
+      .toggle-button {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-2xs);
+        border-radius: 9999px;
+        border: 1px solid var(--color-border);
+        padding: var(--spacing-2xs) var(--spacing-sm);
+        background-color: var(--color-surface);
+        color: var(--color-text-secondary);
+        font-size: 0.75rem;
+        font-weight: 600;
+        box-shadow: var(--shadow-sm);
+        transition: background-color var(--transition-base), color var(--transition-base), box-shadow var(--transition-base),
+          transform var(--transition-base);
+      }
+
+      .toggle-button:hover {
+        background-color: var(--color-surface-muted);
+        color: var(--color-text-primary);
+        transform: translateY(-1px);
+      }
+
+      .toggle-button--active {
+        color: var(--color-accent);
+        border-color: transparent;
+        box-shadow: var(--shadow-md);
+      }
+
+      .toggle-group {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-2xs);
+        padding: var(--spacing-2xs);
+        border-radius: 9999px;
+        border: 1px solid var(--color-border);
+        background-color: var(--color-surface);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .toggle-option {
+        border: none;
+        background: transparent;
+        border-radius: 9999px;
+        padding: var(--spacing-2xs) var(--spacing-sm);
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--color-text-secondary);
+        transition: background-color var(--transition-base), color var(--transition-base), transform var(--transition-base);
+      }
+
+      .toggle-option:hover {
+        background-color: var(--color-surface-muted);
+        color: var(--color-text-primary);
+        transform: translateY(-1px);
+      }
+
+      .toggle-option:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+
+      .toggle-option--active {
+        background-color: var(--color-accent);
+        color: var(--color-accent-contrast);
+        box-shadow: var(--shadow-sm);
+      }
+
       /* Custom scrollbar for a more modern look */
       ::-webkit-scrollbar {
         width: 8px;
@@ -66,7 +278,7 @@
       }
     </style>
   </head>
-  <body class="bg-slate-50 text-slate-800 antialiased">
+  <body class="theme-light density-default antialiased">
     <div id="root"></div>
     <script type="importmap">
       {
@@ -75,7 +287,8 @@
           "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
           "react-router-dom": "https://esm.sh/react-router-dom@6.23.1",
           "lucide-react": "https://esm.sh/lucide-react@0.394.0",
-          "pdfjs-dist": "https://esm.sh/pdfjs-dist@4.4.178"
+          "pdfjs-dist": "https://esm.sh/pdfjs-dist@4.4.178",
+          "classnames": "https://esm.sh/classnames@2.5.1"
         }
       }
     </script>

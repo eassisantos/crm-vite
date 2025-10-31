@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useCallback,
+  ReactNode,
+  useState,
+  useEffect,
+} from 'react';
 import {
   DocumentTemplate,
   DocumentChecklistConfig,
@@ -19,6 +27,9 @@ import {
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { fakeApiCall } from '../utils/fakeApiCall';
 
+export type ThemeMode = 'light' | 'dark';
+export type DensityMode = 'compact' | 'default' | 'spacious';
+
 interface SettingsContextValue {
   documentTemplates: DocumentTemplate[];
   benefitTypes: string[];
@@ -27,6 +38,11 @@ interface SettingsContextValue {
   firmInfo: FirmInfo;
   brandingSettings: BrandingSettings;
   notificationSettings: NotificationSettings;
+  theme: ThemeMode;
+  density: DensityMode;
+  setTheme: (theme: ThemeMode) => void;
+  toggleTheme: () => void;
+  setDensity: (density: DensityMode) => void;
   addTemplate: (templateData: Omit<DocumentTemplate, 'id'>) => Promise<void>;
   updateTemplate: (template: DocumentTemplate) => Promise<void>;
   deleteTemplate: (templateId: string) => Promise<void>;
@@ -44,6 +60,65 @@ interface SettingsContextValue {
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
 
 export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    if (typeof window === 'undefined') {
+      return 'light';
+    }
+    try {
+      const stored = window.localStorage.getItem('crm_theme');
+      return stored === 'dark' ? 'dark' : 'light';
+    } catch (error) {
+      console.warn('Não foi possível ler o tema armazenado.', error);
+      return 'light';
+    }
+  });
+  const [density, setDensityState] = useState<DensityMode>(() => {
+    if (typeof window === 'undefined') {
+      return 'default';
+    }
+    try {
+      const stored = window.localStorage.getItem('crm_density');
+      if (stored === 'compact' || stored === 'spacious') {
+        return stored;
+      }
+    } catch (error) {
+      console.warn('Não foi possível ler a densidade armazenada.', error);
+    }
+    return 'default';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem('crm_theme', theme);
+      } catch (error) {
+        console.warn('Não foi possível salvar o tema no localStorage.', error);
+      }
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem('crm_density', density);
+      } catch (error) {
+        console.warn('Não foi possível salvar a densidade no localStorage.', error);
+      }
+    }
+  }, [density]);
+
+  const setTheme = useCallback((newTheme: ThemeMode) => {
+    setThemeState(prev => (prev === newTheme ? prev : newTheme));
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState(prev => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
+
+  const setDensity = useCallback((newDensity: DensityMode) => {
+    setDensityState(prev => (prev === newDensity ? prev : newDensity));
+  }, []);
+
   const [documentTemplates, setDocumentTemplates] = useLocalStorage<DocumentTemplate[]>(
     'crm_documentTemplates',
     mockDocumentTemplates,
@@ -163,6 +238,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     firmInfo,
     brandingSettings,
     notificationSettings,
+    theme,
+    density,
+    setTheme,
+    toggleTheme,
+    setDensity,
     addTemplate,
     updateTemplate,
     deleteTemplate,
@@ -183,6 +263,11 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     firmInfo,
     brandingSettings,
     notificationSettings,
+    theme,
+    density,
+    setTheme,
+    toggleTheme,
+    setDensity,
     addTemplate,
     updateTemplate,
     deleteTemplate,
