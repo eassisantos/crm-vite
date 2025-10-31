@@ -5,7 +5,7 @@ import { useCases } from '../context/CasesContext';
 import { useClients } from '../context/ClientsContext';
 import { Case, Client, SuggestedTask, CaseStatus, Fee, Expense, Task } from '../types';
 import { ArrowLeft, User, Briefcase, Bot, Loader2, PlusCircle, Sparkles, AlertCircle, Clock, Gavel } from 'lucide-react';
-import { generateCaseSummary, suggestTasksFromNotes } from '../services/geminiService';
+import { generateCaseSummary, suggestTasksFromNotes, isGeminiAvailable } from '../services/geminiService';
 import DocumentManager from '../components/case/DocumentManager';
 import LegalDocumentsManager from '../components/case/LegalDocumentsManager';
 import { useToast } from '../context/ToastContext';
@@ -107,6 +107,7 @@ const CaseDetails: React.FC = () => {
   const { getCaseById, saveCase, addTaskToCase, updateTask, cases } = useCases();
   const { getClientById } = useClients();
   const { addToast } = useToast();
+  const isAIAvailable = isGeminiAvailable;
   
   const { caseData, client } = useMemo(() => {
     if (!caseId) return { caseData: null, client: null };
@@ -127,6 +128,12 @@ const CaseDetails: React.FC = () => {
 
   const handleGenerateSummary = async () => {
     if (!caseData || !client) return;
+    if (!isAIAvailable) {
+      const message = 'Resumo automatizado indisponível. Configure VITE_GEMINI_API_KEY para ativar a IA.';
+      setError(message);
+      addToast(message, 'warning');
+      return;
+    }
     setIsGeneratingSummary(true);
     setError(null);
     try {
@@ -144,6 +151,12 @@ const CaseDetails: React.FC = () => {
 
   const handleSuggestTasks = async () => {
     if (!caseData?.notes) return;
+    if (!isAIAvailable) {
+        const message = 'Sugestões de tarefas indisponíveis. Configure VITE_GEMINI_API_KEY para ativar a IA.';
+        setError(message);
+        addToast(message, 'warning');
+        return;
+    }
     setIsSuggestingTasks(true);
     setError(null);
     setSuggestedTasks([]);
@@ -234,6 +247,12 @@ const CaseDetails: React.FC = () => {
             </div>
         </header>
         {error && <div className="my-4 p-4 bg-red-100 text-red-800 border border-red-200 rounded-lg">{error}</div>}
+        {!isAIAvailable && (
+          <div className="my-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <Sparkles size={18} className="mt-0.5 text-amber-600" />
+            <p>Os recursos de IA estão desativados porque a variável de ambiente <strong>VITE_GEMINI_API_KEY</strong> não foi definida. Entre em contato com o administrador para habilitar os recursos automáticos.</p>
+          </div>
+        )}
         
         {suggestedTasks.length > 0 && (<div className="bg-sky-50 p-6 rounded-xl shadow-md border border-sky-200"><h2 className="text-xl font-bold text-sky-800 mb-4 flex items-center"><Sparkles size={22} className="mr-2"/> Tarefas Sugeridas pela IA</h2><ul className="space-y-3">{suggestedTasks.map((task, index) => (<li key={index} className="p-3 bg-white rounded-lg shadow-sm flex items-center justify-between"><div><p className="font-medium text-slate-800">{task.description}</p><p className="text-xs text-slate-500 mt-1"><strong>Justificativa:</strong> {task.reasoning}</p></div><button onClick={() => handleAddSuggestedTask(task)} className="ml-4 flex-shrink-0 flex items-center bg-emerald-500 text-white px-3 py-1 rounded-lg shadow-sm hover:bg-emerald-600"><PlusCircle size={16} className="mr-1.5"/> Adicionar</button></li>))}</ul></div>)}
 
@@ -245,7 +264,7 @@ const CaseDetails: React.FC = () => {
                     <div className="lg:col-span-2 space-y-6">
                         <div className="flex justify-between items-center">
                             <h2 className="text-xl font-bold text-slate-800 flex items-center"><Bot size={24} className="mr-2 text-sky-600"/> Resumo com IA</h2>
-                            <button onClick={handleGenerateSummary} disabled={isGeneratingSummary} className="flex items-center bg-sky-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-sky-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed">{isGeneratingSummary ? <Spinner /> : <Sparkles size={20} />}<span className="ml-2">{isGeneratingSummary ? 'Gerando...' : 'Gerar Resumo'}</span></button>
+                            <button onClick={handleGenerateSummary} disabled={isGeneratingSummary || !isAIAvailable} className="flex items-center bg-sky-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-sky-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed">{isGeneratingSummary ? <Spinner /> : <Sparkles size={20} />}<span className="ml-2">{isGeneratingSummary ? 'Gerando...' : 'Gerar Resumo'}</span></button>
                         </div>
                         {caseData.aiSummary ? <div className="prose prose-slate max-w-none p-4 bg-slate-50 rounded-lg border" dangerouslySetInnerHTML={{ __html: sanitizeHTML(caseData.aiSummary) }} /> : <div className="text-center py-8 text-slate-500"><p>Clique para criar um resumo do caso usando IA.</p></div>}
                     </div>
@@ -264,7 +283,7 @@ const CaseDetails: React.FC = () => {
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-slate-800">Notas / Andamentos</h2>
-                            <button onClick={handleSuggestTasks} disabled={isSuggestingTasks || !caseData.notes} className="flex items-center text-xs bg-sky-100 text-sky-700 px-2 py-1 rounded-lg hover:bg-sky-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed">{isSuggestingTasks ? <Spinner /> : <Sparkles size={14} />}<span className="ml-1.5">Sugerir Tarefas</span></button>
+                            <button onClick={handleSuggestTasks} disabled={isSuggestingTasks || !caseData.notes || !isAIAvailable} className="flex items-center text-xs bg-sky-100 text-sky-700 px-2 py-1 rounded-lg hover:bg-sky-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed">{isSuggestingTasks ? <Spinner /> : <Sparkles size={14} />}<span className="ml-1.5">Sugerir Tarefas</span></button>
                         </div>
                         <NotesTimeline notes={caseData.notes} />
                         <form onSubmit={handleAddNote} className="mt-4">

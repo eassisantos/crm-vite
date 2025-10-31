@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Client, RepresentativeData, Case, CaseStatus } from '../../types';
-import { X, Bot, Loader2, FileText, AlertTriangle, User, FileBadge, MapPin, Shield, Briefcase, ArrowRight, Car, Fingerprint, Globe, FilePlus } from 'lucide-react';
-import { extractClientInfoFromDocument, extractClientInfoFromImage } from '../../services/geminiService';
+import { X, Bot, Loader2, FileText, AlertTriangle, User, FileBadge, MapPin, Shield, Briefcase, ArrowRight, Car, Fingerprint, Globe, FilePlus, Info } from 'lucide-react';
+import { extractClientInfoFromDocument, extractClientInfoFromImage, isGeminiAvailable } from '../../services/geminiService';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useToast } from '../../context/ToastContext';
 
@@ -69,6 +69,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   const { addClient } = useClients();
   const { saveCase } = useCases();
   const { addToast } = useToast();
+  const isAIAvailable = isGeminiAvailable;
 
   const [step, setStep] = useState<Step>('clientDetails');
   const [newlyCreatedClient, setNewlyCreatedClient] = useState<Client | null>(null);
@@ -150,7 +151,14 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
 
   const processFileWithAI = async (fileToProcess: File, isRep: boolean, documentType: string) => {
     if (!fileToProcess) return;
-    
+
+    if (!isAIAvailable) {
+      const message = 'Preenchimento automático indisponível. Configure VITE_GEMINI_API_KEY para ativar a análise por IA.';
+      setError(message);
+      addToast(message, 'warning');
+      return;
+    }
+
     setIsAnalyzing(true);
     setError('');
 
@@ -229,6 +237,12 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   };
 
   const handleDocTypeClick = (docType: string, isRep: boolean) => {
+    if (!isAIAvailable) {
+        const message = 'Recurso de leitura automática desativado. Configure VITE_GEMINI_API_KEY para utilizar esta funcionalidade.';
+        setError(message);
+        addToast(message, 'warning');
+        return;
+    }
     setSelectedDocType(docType);
     setIsRepUpload(isRep);
     fileInputRef.current?.click();
@@ -352,15 +366,33 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
     <div className={`p-6 rounded-lg text-center ${isRep ? 'bg-blue-50 border-blue-200' : 'bg-sky-50 border-sky-200'} border-2 border-dashed`}>
         <Bot size={32} className={`mx-auto ${isRep ? 'text-blue-500' : 'text-sky-500'}`} />
         <h3 className="mt-2 text-lg font-medium text-slate-900">{isRep ? 'Dados do Representante' : 'Poupe tempo com IA'}</h3>
-        <p className="mt-1 text-sm text-slate-600">Escolha o tipo de documento e envie o arquivo. A IA preencherá os dados para você.</p>
+        <p className="mt-1 text-sm text-slate-600">
+            {isAIAvailable ? 'Escolha o tipo de documento e envie o arquivo. A IA preencherá os dados para você.' : 'Integração de IA desativada. Configure a chave VITE_GEMINI_API_KEY para habilitar o preenchimento automático.'}
+        </p>
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
             {docTypes.map(doc => (
-                <button key={doc.name} type="button" onClick={() => handleDocTypeClick(doc.name, isRep)} className="flex flex-col items-center justify-center p-3 border-2 border-slate-300 border-dashed rounded-lg text-slate-600 hover:border-sky-500 hover:bg-white hover:text-sky-600 transition-colors">
+                <button
+                    key={doc.name}
+                    type="button"
+                    onClick={() => handleDocTypeClick(doc.name, isRep)}
+                    disabled={!isAIAvailable}
+                    className={`flex flex-col items-center justify-center p-3 border-2 border-slate-300 border-dashed rounded-lg text-slate-600 transition-colors ${
+                        isAIAvailable
+                            ? 'hover:border-sky-500 hover:bg-white hover:text-sky-600'
+                            : 'cursor-not-allowed opacity-60'
+                    }`}
+                >
                     {React.cloneElement(doc.icon as React.ReactElement, { size: 20 })}
                     <span className="mt-1.5 text-xs font-semibold">{doc.name}</span>
                 </button>
             ))}
         </div>
+        {!isAIAvailable && (
+            <div className="mt-4 flex items-center justify-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+                <Info size={14} className="text-amber-600" />
+                <span>Adicione a variável VITE_GEMINI_API_KEY ao ambiente para ativar a leitura automática de documentos.</span>
+            </div>
+        )}
     </div>
   );
 

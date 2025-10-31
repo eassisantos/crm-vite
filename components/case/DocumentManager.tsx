@@ -5,7 +5,7 @@ import { useCases } from '../../context/CasesContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
 import ConfirmationModal from '../common/ConfirmationModal';
-import { classifyDocument } from '../../services/geminiService';
+import { classifyDocument, isGeminiAvailable } from '../../services/geminiService';
 import * as pdfjsLib from 'pdfjs-dist';
 
 const getErrorMessage = (error: unknown, fallback: string) =>
@@ -46,6 +46,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
   const [docToDelete, setDocToDelete] = useState<CaseDocument | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisSuggestion, setAnalysisSuggestion] = useState<{ file: File; suggestedCategory: string } | null>(null);
+  const isAIAvailable = isGeminiAvailable;
 
   const uploadedDocNames = caseData.documents.map(doc => doc.name.toLowerCase());
 
@@ -86,6 +87,13 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
           console.error('Erro ao salvar documento vinculado ao checklist.', error);
         }
     } else {
+        if (!isAIAvailable) {
+            addToast('Classificação automática indisponível. Configure VITE_GEMINI_API_KEY para habilitar a análise por IA.', 'warning');
+            saveDocument(file, file.name);
+            if(event.target) event.target.value = '';
+            setUploadingDocName(null);
+            return;
+        }
         setIsAnalyzing(true);
         setAnalysisSuggestion(null);
         try {
@@ -126,7 +134,9 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
                 addToast('Documento adicionado. A IA não sugeriu uma categoria.', 'info');
             }
         } catch (error) {
-            console.error("Error during document analysis:", error);
+            if (import.meta.env.DEV) {
+                console.error("Error during document analysis:", error);
+            }
             addToast('Erro ao analisar o documento. Enviando como avulso.', 'error');
             try {
               await saveDocument(file, file.name);
@@ -189,6 +199,16 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
       <div className="bg-white p-6 rounded-xl shadow-sm">
         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
         <h2 className="text-xl font-bold text-slate-800 mb-4">Gerenciador de Documentos</h2>
+
+        {!isAIAvailable && (
+            <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <Sparkles className="mt-0.5 text-amber-600" size={18} />
+                <p>
+                    A classificação automática via IA está desativada porque a variável <strong>VITE_GEMINI_API_KEY</strong> não foi configurada.
+                    Os documentos serão enviados sem sugestão automática até que a integração seja habilitada.
+                </p>
+            </div>
+        )}
         
         {isAnalyzing && (
             <div className="p-4 my-4 bg-sky-50 border border-sky-200 rounded-lg flex items-center justify-center">
