@@ -35,6 +35,7 @@ import CaseFormModal from '../components/case/CaseFormModal';
 import TaskFormModal from '../components/tasks/TaskFormModal';
 import FinancialEntryModal from '../components/financials/FinancialEntryModal';
 import Tabs, { TabPanel } from '../components/common/Tabs';
+import Skeleton from '../components/common/Skeleton';
 
 import { useCases } from '../context/CasesContext';
 import { useClients } from '../context/ClientsContext';
@@ -378,8 +379,15 @@ const FinancialSummaryTab: React.FC = () => {
 const RecentActivityTab: React.FC = () => {
   const { cases } = useCases();
   const { clients, getClientById } = useClients();
+  const [isLoading, setIsLoading] = useState(true);
 
   type ActivityItem = { type: 'case' | 'client'; date: Date; data: Case | Client };
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 400);
+    return () => clearTimeout(timer);
+  }, [cases.length, clients.length]);
 
   const activityFeed = useMemo(() => {
     const caseActivities: ActivityItem[] = cases.map(c => ({ type: 'case', date: parseDate(c.lastUpdate), data: c }));
@@ -404,41 +412,64 @@ const RecentActivityTab: React.FC = () => {
     });
   }, [activityFeed]);
 
+  const skeletonItems = (
+    <div className="space-y-4">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div key={index} className="flex items-start gap-4 rounded-lg border border-slate-100 bg-white p-4 shadow-sm">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 p-4">
         <p className="text-xs font-semibold uppercase text-indigo-600">Movimentações nos últimos 10 dias</p>
-        <Sparkline data={activitySparklineData} color="#6366f1" />
+        {isLoading ? <Skeleton className="mt-4 h-20 w-full" /> : <Sparkline data={activitySparklineData} color="#6366f1" />}
       </div>
-      <div className="space-y-4">
-        {activityFeed.map((item, index) => (
-          <div key={index} className="flex items-start gap-4 rounded-lg border border-slate-100 bg-white p-4 shadow-sm">
-            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${item.type === 'case' ? 'bg-sky-100 text-sky-600' : 'bg-emerald-100 text-emerald-600'}`}>
-              {item.type === 'case' ? <Briefcase size={18} /> : <User size={18} />}
+      {isLoading ? (
+        skeletonItems
+      ) : activityFeed.length > 0 ? (
+        <div className="space-y-4">
+          {activityFeed.map((item, index) => (
+            <div key={index} className="flex items-start gap-4 rounded-lg border border-slate-100 bg-white p-4 shadow-sm transition hover:shadow-md">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full ${item.type === 'case' ? 'bg-sky-100 text-sky-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                {item.type === 'case' ? <Briefcase size={18} /> : <User size={18} />}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-slate-800">
+                  {item.type === 'case' ? (
+                    <>
+                      Caso{' '}
+                      <Link to={`/casos/${item.data.id}`} className="font-semibold text-sky-600 hover:underline">
+                        {(item.data as Case).title}
+                      </Link>{' '}
+                      atualizado. Cliente: {getClientById((item.data as Case).clientId)?.name}
+                    </>
+                  ) : (
+                    <>
+                      Novo cliente <span className="font-semibold text-emerald-600">{(item.data as Client).name}</span> cadastrado.
+                    </>
+                  )}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {item.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-sm text-slate-800">
-                {item.type === 'case' ? (
-                  <>
-                    Caso{' '}
-                    <Link to={`/casos/${item.data.id}`} className="font-semibold text-sky-600 hover:underline">
-                      {(item.data as Case).title}
-                    </Link>{' '}
-                    atualizado. Cliente: {getClientById((item.data as Case).clientId)?.name}
-                  </>
-                ) : (
-                  <>
-                    Novo cliente <span className="font-semibold text-emerald-600">{(item.data as Client).name}</span> cadastrado.
-                  </>
-                )}
-              </p>
-              <p className="text-xs text-slate-400">
-                {item.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white py-12 text-center text-slate-500">
+          <p className="text-lg font-semibold">Nenhuma atividade recente registrada.</p>
+          <p className="text-sm mt-1">Cadastre um novo caso ou cliente para ver movimentações por aqui.</p>
+        </div>
+      )}
     </div>
   );
 };

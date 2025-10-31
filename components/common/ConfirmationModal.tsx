@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { useModalAccessibility } from '../../hooks/useModalAccessibility';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -24,29 +25,36 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const dialogRef = useRef<HTMLDivElement>(null);
   useModalAccessibility(isOpen, dialogRef, { onClose });
 
-  if (!isOpen) return null;
-
   const handleConfirm = () => {
     onConfirm();
     onClose();
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        ref={dialogRef}
-        className="relative bg-white rounded-lg shadow-xl w-full max-w-md focus:outline-none"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirmation-modal-title"
-        aria-describedby="confirmation-modal-description"
-        tabIndex={-1}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
+          role="presentation"
+          onClick={onClose}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            ref={dialogRef}
+            className="relative bg-white rounded-lg shadow-xl w-full max-w-md focus:outline-none"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirmation-modal-title"
+            aria-describedby="confirmation-modal-description"
+            tabIndex={-1}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+          >
         <div className="p-6">
           <div className="flex items-start">
             <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -88,8 +96,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         >
           <X size={18} aria-hidden="true" />
         </button>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

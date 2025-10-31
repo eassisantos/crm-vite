@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Menu, User, Bell, Search, Maximize2, Plus, AlertTriangle } from 'lucide-react';
+import { Menu, User, Bell, Search, Maximize2, Minimize2, Plus, AlertTriangle } from 'lucide-react';
 import NotificationsDropdown from './NotificationsDropdown';
 import { useCases } from '../../context/CasesContext';
 import classNames from 'classnames';
@@ -15,6 +15,7 @@ interface HeaderProps {
   onMenuClick: () => void;
   onSearchClick: () => void;
   onFocusModeToggle: () => void;
+  isFocusMode: boolean;
 }
 
 const primaryActionMap: Record<string, string> = {
@@ -29,7 +30,7 @@ const primaryActionMap: Record<string, string> = {
   '/configuracoes': 'Atualizar preferências',
 };
 
-export default function Header({ onMenuClick, onSearchClick, onFocusModeToggle }: HeaderProps) {
+export default function Header({ onMenuClick, onSearchClick, onFocusModeToggle, isFocusMode }: HeaderProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { getUrgentTasks, getCaseById } = useCases();
   const { getClientById } = useClients();
@@ -176,10 +177,15 @@ export default function Header({ onMenuClick, onSearchClick, onFocusModeToggle }
         <button
           type="button"
           onClick={onFocusModeToggle}
-          className="inline-flex items-center gap-2 rounded-full border border-subtle bg-surface px-3 py-1.5 text-sm font-medium text-secondary shadow-soft transition-colors duration-200 hover:bg-surface-muted hover:text-primary"
+          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium shadow-soft transition-colors duration-200 ${
+            isFocusMode
+              ? 'border-transparent bg-sky-600 text-white hover:bg-sky-700'
+              : 'border-subtle bg-surface text-secondary hover:bg-surface-muted hover:text-primary'
+          }`}
+          aria-pressed={isFocusMode}
         >
-          <Maximize2 className="h-4 w-4" />
-          Modo Foco
+          {isFocusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          {isFocusMode ? 'Sair do Foco' : 'Modo Foco'}
         </button>
         <ThemeToggle />
         <DensityToggle />

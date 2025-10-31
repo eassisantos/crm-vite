@@ -22,6 +22,7 @@ import type { CaseStatus } from '../../types';
 interface SidebarProps {
     isOpen: boolean;
     onClose: () => void;
+    isFocusMode: boolean;
 }
 
 interface SectionItem {
@@ -37,11 +38,11 @@ interface NavSection {
   items: SectionItem[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isFocusMode }) => {
   const { brandingSettings, firmInfo, caseStatuses, sidebarStatus, setSidebarStatus } = useSettings();
   const { cases, getUrgentTasks } = useCases();
   const isCollapsed = useBreakpoint(1024, 'max');
-  const shouldShowSidebar = !isCollapsed || isOpen;
+  const shouldShowSidebar = !isFocusMode && (!isCollapsed || isOpen);
 
   const allTasks = useMemo(() => cases.flatMap(c => c.tasks), [cases]);
   const urgentTasks = useMemo(() => getUrgentTasks(), [getUrgentTasks]);
@@ -184,7 +185,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             onClick={onClose}
         ></div>
 
-        <aside className={`fixed inset-y-0 left-0 w-64 bg-slate-800 text-white flex flex-col p-4 transform transition-transform duration-300 ease-in-out z-30 ${shouldShowSidebar ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 lg:w-64 lg:flex-shrink-0`}>
+        <aside
+            className={`fixed inset-y-0 left-0 w-64 bg-slate-800 text-white flex flex-col p-4 transform transition-transform duration-300 ease-in-out z-30 ${shouldShowSidebar ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 lg:w-64 lg:flex-shrink-0 ${isFocusMode ? 'pointer-events-none opacity-0 lg:opacity-0' : ''}`}
+            aria-hidden={isFocusMode}
+        >
             <div className="flex items-center justify-between mb-6 px-2 h-16 border-b border-slate-700 -m-4 p-4">
                 <div className="flex items-center min-w-0">
                     {brandingSettings.logo ? (

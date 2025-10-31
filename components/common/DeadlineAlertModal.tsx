@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { X, AlertTriangle, CalendarClock } from 'lucide-react';
 import { Task } from '../../types';
 import { useModalAccessibility } from '../../hooks/useModalAccessibility';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface DeadlineAlertModalProps {
   isOpen: boolean;
@@ -19,24 +20,31 @@ const DeadlineAlertModal: React.FC<DeadlineAlertModalProps> = ({ isOpen, onClose
 
   useModalAccessibility(isOpen, dialogRef, { onClose: () => onClose(false) });
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4"
-      role="presentation"
-      onClick={() => onClose(false)}
-    >
-      <div
-        ref={dialogRef}
-        className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col focus:outline-none"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="deadline-alert-modal-title"
-        aria-describedby="deadline-alert-modal-description"
-        tabIndex={-1}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4"
+          role="presentation"
+          onClick={() => onClose(false)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            ref={dialogRef}
+            className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col focus:outline-none"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deadline-alert-modal-title"
+            aria-describedby="deadline-alert-modal-description"
+            tabIndex={-1}
+            initial={{ y: 36, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 24, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 210, damping: 24 }}
+          >
         <div className="p-6 border-b flex justify-between items-center bg-yellow-50">
           <div className="flex items-center">
             <AlertTriangle size={28} className="text-yellow-500 mr-4" aria-hidden="true" />
@@ -112,8 +120,10 @@ const DeadlineAlertModal: React.FC<DeadlineAlertModalProps> = ({ isOpen, onClose
             Fechar
           </button>
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

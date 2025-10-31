@@ -43,7 +43,8 @@ export default function App() {
 }
 
 const AppContent: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
+  const defaultSidebarState = typeof window !== 'undefined' ? window.innerWidth > 1024 : true;
+  const [isSidebarOpen, setIsSidebarOpen] = useState(defaultSidebarState);
   const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [hasDismissedForToday, setHasDismissedForToday] = useState(() => {
@@ -51,6 +52,8 @@ const AppContent: React.FC = () => {
     return sessionStorage.getItem('deadlineModalDismissed') === today;
   });
   const [hasAcknowledgedCurrentUrgentTasks, setHasAcknowledgedCurrentUrgentTasks] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [sidebarBeforeFocus, setSidebarBeforeFocus] = useState(defaultSidebarState);
   const { getUrgentTasks } = useCases();
   const { theme, density } = useSettings();
 
@@ -88,7 +91,8 @@ const AppContent: React.FC = () => {
   }, [density]);
 
   const layoutClassName = classNames(
-    'app-shell grid min-h-screen w-full grid-cols-[auto,1fr] grid-rows-[auto,1fr] transition-colors duration-300',
+    'app-shell grid min-h-screen w-full grid-rows-[auto,1fr] transition-colors duration-300',
+    isFocusMode ? 'grid-cols-1' : 'grid-cols-[auto,1fr]',
     {
       'density-compact': density === 'compact',
       'density-default': density === 'default',
@@ -97,9 +101,28 @@ const AppContent: React.FC = () => {
   );
 
   const mainClassName = classNames(
-    'app-main col-start-2 row-start-2 h-full overflow-x-hidden overflow-y-auto rounded-tl-3xl',
+    'app-main row-start-2 h-full overflow-x-hidden overflow-y-auto rounded-tl-3xl',
     'transition-[background-color,color,padding] duration-300',
+    isFocusMode ? 'col-start-1' : 'col-start-2',
   );
+
+  useEffect(() => {
+    if (!isFocusMode) {
+      setSidebarBeforeFocus(isSidebarOpen);
+    }
+  }, [isFocusMode, isSidebarOpen]);
+
+  const handleFocusModeToggle = () => {
+    setIsFocusMode(prev => {
+      if (!prev) {
+        setSidebarBeforeFocus(isSidebarOpen);
+        setIsSidebarOpen(false);
+        return true;
+      }
+      setIsSidebarOpen(sidebarBeforeFocus);
+      return false;
+    });
+  };
 
   const handleCloseDeadlineModal = (dismiss: boolean) => {
     if (dismiss) {
@@ -122,28 +145,31 @@ const AppContent: React.FC = () => {
       />
       <GlobalSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
       <div className={layoutClassName}>
-        <div className="col-start-1 row-span-2">
-          <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+        <div className={classNames('col-start-1 row-span-2 transition-all duration-300', { hidden: isFocusMode })}>
+          <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} isFocusMode={isFocusMode} />
         </div>
-        <div className="col-start-2 row-start-1">
+        <div className={classNames('row-start-1', isFocusMode ? 'col-start-1' : 'col-start-2')}>
           <Header
             onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
             onSearchClick={() => setIsSearchModalOpen(true)}
-            onFocusModeToggle={() => setIsSidebarOpen(false)}
+            onFocusModeToggle={handleFocusModeToggle}
+            isFocusMode={isFocusMode}
           />
         </div>
         <main className={mainClassName}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/casos" element={<Cases />} />
-            <Route path="/casos/:caseId" element={<CaseDetails />} />
-            <Route path="/clientes" element={<Clients />} />
-            <Route path="/clientes/:clientId" element={<ClientDetails />} />
-            <Route path="/agenda" element={<Agenda />} />
-            <Route path="/financeiro" element={<Financials />} />
-            <Route path="/modelos" element={<DocumentTemplates />} />
-            <Route path="/configuracoes" element={<Configuracoes />} />
-          </Routes>
+          <div className={classNames('mx-auto w-full', isFocusMode ? 'max-w-screen-xl' : 'max-w-6xl')}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/casos" element={<Cases />} />
+              <Route path="/casos/:caseId" element={<CaseDetails />} />
+              <Route path="/clientes" element={<Clients />} />
+              <Route path="/clientes/:clientId" element={<ClientDetails />} />
+              <Route path="/agenda" element={<Agenda />} />
+              <Route path="/financeiro" element={<Financials />} />
+              <Route path="/modelos" element={<DocumentTemplates />} />
+              <Route path="/configuracoes" element={<Configuracoes />} />
+            </Routes>
+          </div>
         </main>
       </div>
       <ToastContainer />

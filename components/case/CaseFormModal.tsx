@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Case, CaseStatus } from '../../types';
+import { Case } from '../../types';
 import { useClients } from '../../context/ClientsContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
 import { X } from 'lucide-react';
 import { useModalAccessibility } from '../../hooks/useModalAccessibility';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type CaseFormData = Omit<Case, 'id' | 'lastUpdate' | 'tasks' | 'aiSummary' | 'documents' | 'legalDocuments' | 'startDate'>;
 
@@ -83,24 +84,31 @@ const CaseFormModal: React.FC<CaseFormModalProps> = ({ isOpen, onClose, onSave, 
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        ref={dialogRef}
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col focus:outline-none"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="case-form-modal-title"
-        aria-describedby="case-form-modal-description"
-        tabIndex={-1}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
+          role="presentation"
+          onClick={onClose}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            ref={dialogRef}
+            className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col focus:outline-none"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="case-form-modal-title"
+            aria-describedby="case-form-modal-description"
+            tabIndex={-1}
+            initial={{ y: 32, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 24, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 210, damping: 22 }}
+          >
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-2xl font-bold text-slate-800" id="case-form-modal-title">{initialData ? 'Editar Caso' : 'Novo Caso'}</h2>
           <button
@@ -185,8 +193,10 @@ const CaseFormModal: React.FC<CaseFormModalProps> = ({ isOpen, onClose, onSave, 
             </button>
           </div>
         </form>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
