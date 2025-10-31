@@ -4,6 +4,7 @@ import { useCases } from '../../context/CasesContext';
 import { useNavigate } from 'react-router-dom';
 import { X, Search, User, Briefcase } from 'lucide-react';
 import { useModalAccessibility } from '../../hooks/useModalAccessibility';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface GlobalSearchModalProps {
   isOpen: boolean;
@@ -55,24 +56,31 @@ const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-60 z-[100] flex justify-center items-start pt-20 p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        ref={dialogRef}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl focus:outline-none"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="global-search-modal-title"
-        aria-describedby="global-search-modal-description"
-        tabIndex={-1}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-60 z-[100] flex justify-center items-start pt-20 p-4"
+          role="presentation"
+          onClick={onClose}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            ref={dialogRef}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl focus:outline-none"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="global-search-modal-title"
+            aria-describedby="global-search-modal-description"
+            tabIndex={-1}
+            initial={{ y: -16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -12, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+          >
         <div className="flex justify-between items-center px-4 pt-4">
           <h2 className="text-lg font-semibold text-slate-800" id="global-search-modal-title">
             Busca rápida
@@ -160,8 +168,10 @@ const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }
             </div>
           )}
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

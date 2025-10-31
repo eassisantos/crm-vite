@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Case, CaseStatus } from '../types';
 import { Plus, Search, ChevronDown, Edit, XCircle, Scale, Gavel, LayoutGrid, List } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useClients } from '../context/ClientsContext';
 import { useToast } from '../context/ToastContext';
 import CaseFormModal from '../components/case/CaseFormModal';
 import CaseKanbanView from '../components/case/CaseKanbanView';
+import Skeleton from '../components/common/Skeleton';
 
 const statusColors: Record<CaseStatus, string> = {
   'Aberto': 'bg-blue-100 text-blue-800',
@@ -56,6 +57,13 @@ export default function Cases() {
   const [searchTerm, setSearchTerm] = useState('');
   const [natureFilter, setNatureFilter] = useState<'all' | 'Judicial' | 'Administrativo'>('all');
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(false), 450);
+    return () => clearTimeout(timer);
+  }, [cases.length]);
 
   const clientIdFilter = searchParams.get('clientId');
 
@@ -180,41 +188,77 @@ export default function Cases() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {filteredCases.map((c) => {
-                    const client = getClientById(c.clientId);
-                    return (
-                      <tr key={c.id} className="hover:bg-slate-50">
-                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
-                          <Link to={`/casos/${c.id}`} className="text-sky-600 hover:text-sky-900">
-                            {c.caseNumber || '-'}
-                          </Link>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">{c.title}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">{client?.name || 'N/A'}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm"><NatureBadge nature={c.nature} /></td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm">
-                          <StatusBadge status={c.status} />
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">{new Date(c.lastUpdate + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium space-x-4">
-                          <Link to={`/casos/${c.id}`} className="text-sky-600 hover:text-sky-900">Detalhes</Link>
-                          <button onClick={() => handleOpenModal(c)} className="text-slate-500 hover:text-sky-700">
-                            <Edit size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {isLoading
+                    ? Array.from({ length: 5 }).map((_, index) => (
+                        <tr key={`case-skeleton-${index}`} className="hover:bg-transparent">
+                          {Array.from({ length: 7 }).map((__, cellIndex) => (
+                            <td key={cellIndex} className="px-6 py-4">
+                              <Skeleton className="h-4 w-full" />
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    : filteredCases.length > 0
+                    ? filteredCases.map((c) => {
+                        const client = getClientById(c.clientId);
+                        return (
+                          <tr key={c.id} className="transition-colors hover:bg-slate-50">
+                            <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
+                              <Link to={`/casos/${c.id}`} className="text-sky-600 hover:text-sky-900">
+                                {c.caseNumber || '-'}
+                              </Link>
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">{c.title}</td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">{client?.name || 'N/A'}</td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm"><NatureBadge nature={c.nature} /></td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm">
+                              <StatusBadge status={c.status} />
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">
+                              {new Date(c.lastUpdate + 'T00:00:00').toLocaleDateString('pt-BR')}
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium space-x-4">
+                              <Link to={`/casos/${c.id}`} className="text-sky-600 hover:text-sky-900">Detalhes</Link>
+                              <button onClick={() => handleOpenModal(c)} className="text-slate-500 hover:text-sky-700">
+                                <Edit size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    : (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-12">
+                            <div className="text-center text-slate-500">
+                              <p className="text-lg font-semibold">Nenhum caso encontrado.</p>
+                              <p className="text-sm mt-1">Ajuste os filtros ou cadastre um novo caso para começar.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="flex-1 overflow-hidden p-4">
+              {isLoading ? (
+                <div className="flex h-full gap-6 overflow-x-auto pb-4">
+                  {Array.from({ length: 3 }).map((_, columnIndex) => (
+                    <div key={columnIndex} className="flex w-80 flex-shrink-0 flex-col rounded-xl bg-slate-100 p-3 space-y-3">
+                      <Skeleton className="h-5 w-40" />
+                      {Array.from({ length: 3 }).map((__, cardIndex) => (
+                        <Skeleton key={cardIndex} className="h-32 w-full rounded-lg" />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ) : (
                 <CaseKanbanView cases={filteredCases} />
+              )}
             </div>
           )}
 
-           {filteredCases.length === 0 && (
+          {!isLoading && filteredCases.length === 0 && (
             <div className="text-center py-12 px-4 flex-1 flex flex-col justify-center items-center">
               <Search className="mx-auto h-12 w-12 text-slate-400" />
               <h3 className="mt-2 text-sm font-medium text-slate-900">Nenhum caso encontrado</h3>

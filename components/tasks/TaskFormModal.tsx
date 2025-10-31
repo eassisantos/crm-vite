@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { X } from 'lucide-react';
 import { Task } from '../../types';
 import { useModalAccessibility } from '../../hooks/useModalAccessibility';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -60,24 +61,31 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
     }
   };
   
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        ref={dialogRef}
-        className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md focus:outline-none"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="task-form-modal-title"
-        aria-describedby="task-form-modal-description"
-        tabIndex={-1}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
+          role="presentation"
+          onClick={onClose}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            ref={dialogRef}
+            className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md focus:outline-none"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="task-form-modal-title"
+            aria-describedby="task-form-modal-description"
+            tabIndex={-1}
+            initial={{ y: 24, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+          >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-slate-800" id="task-form-modal-title">
             Adicionar Tarefa
@@ -135,8 +143,10 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
             </button>
           </div>
         </form>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

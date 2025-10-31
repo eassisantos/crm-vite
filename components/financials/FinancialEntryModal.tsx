@@ -5,6 +5,7 @@ import { Fee, Expense, FeeType, FeeStatus } from '../../types';
 import { X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useModalAccessibility } from '../../hooks/useModalAccessibility';
+import { AnimatePresence, motion } from 'framer-motion';
 
 type EntryType = 'fee' | 'expense';
 
@@ -106,24 +107,31 @@ const FinancialEntryModal: React.FC<FinancialEntryModalProps> = ({ isOpen, onClo
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        ref={dialogRef}
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg focus:outline-none"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="financial-entry-modal-title"
-        aria-describedby="financial-entry-modal-description"
-        tabIndex={-1}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
+          role="presentation"
+          onClick={onClose}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            ref={dialogRef}
+            className="bg-white rounded-lg shadow-xl w-full max-w-lg focus:outline-none"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="financial-entry-modal-title"
+            aria-describedby="financial-entry-modal-description"
+            tabIndex={-1}
+            initial={{ y: 28, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 20, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 230, damping: 22 }}
+          >
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-2xl font-bold text-slate-800" id="financial-entry-modal-title">{title}</h2>
           <button
@@ -194,8 +202,10 @@ const FinancialEntryModal: React.FC<FinancialEntryModalProps> = ({ isOpen, onClo
             </button>
           </div>
         </form>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

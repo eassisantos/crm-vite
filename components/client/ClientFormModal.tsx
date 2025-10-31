@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Client, RepresentativeData, Case, CaseStatus } from '../../types';
+import { Client, RepresentativeData, Case } from '../../types';
 import { X, Bot, Loader2, FileText, AlertTriangle, User, FileBadge, MapPin, Shield, Briefcase, ArrowRight, Car, Fingerprint, Globe, FilePlus, Info } from 'lucide-react';
 import { extractClientInfoFromDocument, extractClientInfoFromImage, isGeminiAvailable } from '../../services/geminiService';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useToast } from '../../context/ToastContext';
 import { useModalAccessibility } from '../../hooks/useModalAccessibility';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
@@ -363,8 +364,6 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
 
   const isFieldAiFilled = (fieldName: string, isRep = false) => aiFilledFields.has(isRep ? `rep_${fieldName}` : fieldName);
 
-  if (!isOpen) return null;
-
   const AiUploadSection: React.FC<{isRep: boolean}> = ({ isRep }) => (
     <div className={`p-6 rounded-lg text-center ${isRep ? 'bg-blue-50 border-blue-200' : 'bg-sky-50 border-sky-200'} border-2 border-dashed`}>
         <Bot size={32} className={`mx-auto ${isRep ? 'text-blue-500' : 'text-sky-500'}`} />
@@ -400,21 +399,30 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   );
 
   return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        ref={dialogRef}
-        className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col focus:outline-none"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="client-form-modal-title"
-        aria-describedby="client-form-modal-description"
-        tabIndex={-1}
-      >
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
+          role="presentation"
+          onClick={onClose}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            ref={dialogRef}
+            className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col focus:outline-none"
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="client-form-modal-title"
+            aria-describedby="client-form-modal-description"
+            tabIndex={-1}
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 24, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+          >
         <input ref={fileInputRef} type="file" className="sr-only" onChange={handleFileChange} accept="image/png, image/jpeg, image/jpg, application/pdf" />
         <div className="p-6 border-b flex justify-between items-center">
             <h2 className="text-2xl font-bold text-slate-800" id="client-form-modal-title">
@@ -563,8 +571,10 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
                 </div>
             )}
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

@@ -4,6 +4,7 @@ import { useClients } from '../../context/ClientsContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useCases } from '../../context/CasesContext';
 import { useToast } from '../../context/ToastContext';
+import { motion } from 'framer-motion';
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
@@ -20,10 +21,14 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ caseData, onDragStart }) => {
   const client = getClientById(caseData.clientId);
 
   return (
-    <div
+    <motion.div
       draggable
       onDragStart={(e) => onDragStart(e, caseData.id)}
-      className="mb-3 cursor-grab rounded-lg border bg-white p-4 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
+      layout
+      className="mb-3 cursor-grab rounded-lg border bg-white p-4 shadow-sm transition-shadow active:cursor-grabbing"
+      whileHover={{ y: -4, boxShadow: '0 20px 45px -24px rgba(15, 23, 42, 0.45)' }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 220, damping: 25 }}
     >
       <div className="mb-2 flex items-center justify-between">
         <Link to={`/casos/${caseData.id}`} className="font-semibold text-sky-700 hover:underline">
@@ -45,7 +50,7 @@ const KanbanCard: React.FC<KanbanCardProps> = ({ caseData, onDragStart }) => {
           {new Date(caseData.lastUpdate + 'T00:00:00').toLocaleDateString('pt-BR')}
         </span>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -75,11 +80,12 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ status, cases, onDragStart,
   };
 
   return (
-    <div
+    <motion.div
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={`flex w-80 flex-shrink-0 flex-col rounded-xl bg-slate-100 transition-colors ${isOver ? 'bg-sky-100' : ''}`}
+      layout
     >
       <div className="flex items-center justify-between rounded-t-xl bg-slate-200 p-3">
         <h3 className="font-semibold text-slate-700">{status}</h3>
@@ -90,7 +96,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ status, cases, onDragStart,
           <KanbanCard key={c.id} caseData={c} onDragStart={onDragStart} />
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -126,6 +132,17 @@ const CaseKanbanView: React.FC<CaseKanbanViewProps> = ({ cases }) => {
       return acc;
     }, {} as Record<CaseStatus, Case[]>);
   }, [caseStatuses, cases]);
+
+  if (cases.length === 0) {
+    return (
+      <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
+        <div>
+          <p className="text-lg font-semibold">Ainda não há casos neste quadro.</p>
+          <p className="text-sm mt-1">Crie um novo caso ou ajuste os filtros para visualizá-los aqui.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full gap-6 overflow-x-auto pb-4">
