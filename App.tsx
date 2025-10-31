@@ -126,7 +126,11 @@ const AppContent: React.FC = () => {
           <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
         </div>
         <div className="col-start-2 row-start-1">
-          <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} onSearchClick={() => setIsSearchModalOpen(true)} />
+          <Header
+            onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            onSearchClick={() => setIsSearchModalOpen(true)}
+            onFocusModeToggle={() => setIsSidebarOpen(false)}
+          />
         </div>
         <main className={mainClassName}>
           <Routes>
