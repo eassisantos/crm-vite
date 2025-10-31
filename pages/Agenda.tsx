@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useCrmData } from '../context/CrmContext';
+import { useCases } from '../context/CasesContext';
 import { Task } from '../types';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, PlusCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ import TaskFormModal from '../components/tasks/TaskFormModal';
 import { useToast } from '../context/ToastContext';
 
 const Agenda: React.FC = () => {
-  const { cases, addTaskToCase } = useCrmData();
+  const { cases, addTaskToCase } = useCases();
   const { addToast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);

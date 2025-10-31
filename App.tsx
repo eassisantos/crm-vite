@@ -6,7 +6,11 @@ import Header from './components/layout/Header';
 import Dashboard from './pages/Dashboard';
 import Cases from './pages/Cases';
 import Clients from './pages/Clients';
-import { CrmProvider } from './context/CrmContext';
+import { SettingsProvider } from './context/SettingsContext';
+import { CasesProvider } from './context/CasesContext';
+import { FinancialProvider } from './context/FinancialContext';
+import { ClientsProvider } from './context/ClientsContext';
+import { ResetProvider } from './context/ResetContext';
 import { ToastProvider } from './context/ToastContext';
 import ToastContainer from './components/common/ToastContainer';
 import Agenda from './pages/Agenda';
@@ -40,31 +44,39 @@ export default function App() {
   };
 
   return (
-    <CrmProvider>
-      <ToastProvider>
-        <DeadlineAlertModal isOpen={isDeadlineModalOpen} onClose={handleCloseDeadlineModal} />
-        <GlobalSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
-        <div className="flex h-screen bg-slate-100">
-          <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} onSearchClick={() => setIsSearchModalOpen(true)} />
-            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/casos" element={<Cases />} />
-                <Route path="/casos/:caseId" element={<CaseDetails />} />
-                <Route path="/clientes" element={<Clients />} />
-                <Route path="/clientes/:clientId" element={<ClientDetails />} />
-                <Route path="/agenda" element={<Agenda />} />
-                <Route path="/financeiro" element={<Financials />} />
-                <Route path="/modelos" element={<DocumentTemplates />} />
-                <Route path="/configuracoes" element={<Configuracoes />} />
-              </Routes>
-            </main>
-          </div>
-        </div>
-        <ToastContainer />
-      </ToastProvider>
-    </CrmProvider>
+    <SettingsProvider>
+      <CasesProvider>
+        <FinancialProvider>
+          <ClientsProvider>
+            <ResetProvider>
+              <ToastProvider>
+                <DeadlineAlertModal isOpen={isDeadlineModalOpen} onClose={handleCloseDeadlineModal} />
+                <GlobalSearchModal isOpen={isSearchModalOpen} onClose={() => setIsSearchModalOpen(false)} />
+                <div className="flex h-screen bg-slate-100">
+                  <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} onSearchClick={() => setIsSearchModalOpen(true)} />
+                    <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50 p-4 sm:p-6 lg:p-8">
+                      <Routes>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/casos" element={<Cases />} />
+                        <Route path="/casos/:caseId" element={<CaseDetails />} />
+                        <Route path="/clientes" element={<Clients />} />
+                        <Route path="/clientes/:clientId" element={<ClientDetails />} />
+                        <Route path="/agenda" element={<Agenda />} />
+                        <Route path="/financeiro" element={<Financials />} />
+                        <Route path="/modelos" element={<DocumentTemplates />} />
+                        <Route path="/configuracoes" element={<Configuracoes />} />
+                      </Routes>
+                    </main>
+                  </div>
+                </div>
+                <ToastContainer />
+              </ToastProvider>
+            </ResetProvider>
+          </ClientsProvider>
+        </FinancialProvider>
+      </CasesProvider>
+    </SettingsProvider>
   );
 }

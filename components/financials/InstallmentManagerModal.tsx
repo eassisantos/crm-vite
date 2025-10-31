@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useCrmData } from '../../context/CrmContext';
+import { useFinancial } from '../../context/FinancialContext';
 import { Fee } from '../../types';
 import { X, Check, Circle } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
@@ -11,7 +11,7 @@ interface InstallmentManagerModalProps {
 }
 
 const InstallmentManagerModal: React.FC<InstallmentManagerModalProps> = ({ fee, onClose }) => {
-  const { updateInstallmentStatus } = useCrmData();
+  const { updateInstallmentStatus } = useFinancial();
   const { addToast } = useToast();
 
   if (!fee.installments) return null;

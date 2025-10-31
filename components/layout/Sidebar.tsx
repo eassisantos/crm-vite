@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, Briefcase, Scale, Calendar, FileText, DollarSign, Settings, X } from 'lucide-react';
-import { useCrmData } from '../../context/CrmContext';
+import { useSettings } from '../../context/SettingsContext';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -27,7 +27,7 @@ const NavItem: React.FC<{ to: string; icon: React.ReactNode; label: string; onCl
 };
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const { brandingSettings, firmInfo } = useCrmData();
+  const { brandingSettings, firmInfo } = useSettings();
 
   return (
     <>

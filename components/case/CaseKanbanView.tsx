@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Case, CaseStatus } from '../../types';
-import { useCrmData } from '../../context/CrmContext';
+import { useClients } from '../../context/ClientsContext';
+import { useSettings } from '../../context/SettingsContext';
+import { useCases } from '../../context/CasesContext';
 import { Link } from 'react-router-dom';
 import { Gavel, Scale, User } from 'lucide-react';
 
@@ -10,7 +12,7 @@ interface KanbanCardProps {
 }
 
 const KanbanCard: React.FC<KanbanCardProps> = ({ caseData, onDragStart }) => {
-  const { getClientById } = useCrmData();
+  const { getClientById } = useClients();
   const client = getClientById(caseData.clientId);
 
   return (
@@ -93,7 +95,8 @@ interface CaseKanbanViewProps {
 }
 
 const CaseKanbanView: React.FC<CaseKanbanViewProps> = ({ cases }) => {
-  const { caseStatuses, saveCase } = useCrmData();
+  const { caseStatuses } = useSettings();
+  const { saveCase } = useCases();
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, caseId: string) => {
     e.dataTransfer.setData('caseId', caseId);
@@ -107,10 +110,12 @@ const CaseKanbanView: React.FC<CaseKanbanViewProps> = ({ cases }) => {
     }
   };
 
-  const casesByStatus = useCrmData().caseStatuses.reduce((acc, status) => {
-    acc[status] = cases.filter(c => c.status === status);
-    return acc;
-  }, {} as Record<CaseStatus, Case[]>);
+  const casesByStatus = useMemo(() => {
+    return caseStatuses.reduce((acc, status) => {
+      acc[status] = cases.filter(c => c.status === status);
+      return acc;
+    }, {} as Record<CaseStatus, Case[]>);
+  }, [caseStatuses, cases]);
 
   return (
     <div className="flex h-full gap-6 overflow-x-auto pb-4">

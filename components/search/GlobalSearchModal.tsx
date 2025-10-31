@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useCrmData } from '../../context/CrmContext';
+import { useClients } from '../../context/ClientsContext';
+import { useCases } from '../../context/CasesContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { X, Search, User, Briefcase } from 'lucide-react';
 
@@ -9,7 +10,8 @@ interface GlobalSearchModalProps {
 }
 
 const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose }) => {
-  const { clients, cases } = useCrmData();
+  const { clients } = useClients();
+  const { cases } = useCases();
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 

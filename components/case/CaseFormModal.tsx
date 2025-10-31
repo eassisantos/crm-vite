@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Case, CaseStatus } from '../../types';
-import { useCrmData } from '../../context/CrmContext';
+import { useClients } from '../../context/ClientsContext';
+import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
 import { X } from 'lucide-react';
 
@@ -16,7 +17,8 @@ interface CaseFormModalProps {
 }
 
 const CaseFormModal: React.FC<CaseFormModalProps> = ({ isOpen, onClose, onSave, initialData, preselectedClientId }) => {
-  const { clients, caseStatuses, benefitTypes } = useCrmData();
+  const { clients } = useClients();
+  const { caseStatuses, benefitTypes } = useSettings();
   const { addToast } = useToast();
   
   const getInitialFormData = (): CaseFormData => ({

@@ -1,6 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
-import { useCrmData } from '../context/CrmContext';
+import { useCases } from '../context/CasesContext';
+import { useClients } from '../context/ClientsContext';
+import { useFinancial } from '../context/FinancialContext';
 import { Task, Case, Client, Fee, Expense } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, Briefcase, PlusCircle, DollarSign, CalendarClock, Check, Clock, User, TrendingUp, TrendingDown, Scale } from 'lucide-react';
@@ -21,7 +23,7 @@ const QuickAccessButton: React.FC<{ icon: React.ReactNode; label: string; onClic
 );
 
 const MyAgenda: React.FC = () => {
-  const { cases } = useCrmData();
+  const { cases, getCaseById } = useCases();
   const allTasks = useMemo(() => cases.flatMap(c => c.tasks).filter(t => !t.completed), [cases]);
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -40,7 +42,7 @@ const MyAgenda: React.FC = () => {
   const TaskItem: React.FC<{ task: Task }> = ({ task }) => (
     <Link to={`/casos/${task.caseId}`} className="block p-2 rounded-md hover:bg-slate-100">
       <p className="text-sm font-medium text-slate-800 truncate">{task.description}</p>
-      <p className="text-xs text-slate-500 truncate">{useCrmData().getCaseById(task.caseId)?.title}</p>
+      <p className="text-xs text-slate-500 truncate">{getCaseById(task.caseId)?.title}</p>
     </Link>
   );
 
@@ -66,7 +68,7 @@ const MyAgenda: React.FC = () => {
 };
 
 const FinancialSummary: React.FC = () => {
-  const { getGlobalFinancials } = useCrmData();
+  const { getGlobalFinancials } = useFinancial();
   const { totalRecebido, totalPendente, totalDespesas } = getGlobalFinancials();
 
   const SummaryItem: React.FC<{ icon: React.ReactNode; label: string; value: string; color: string }> = ({ icon, label, value, color }) => (
@@ -95,7 +97,8 @@ const FinancialSummary: React.FC = () => {
 };
 
 const RecentActivity: React.FC = () => {
-  const { cases, clients, getClientById } = useCrmData();
+  const { cases } = useCases();
+  const { clients, getClientById } = useClients();
   const navigate = useNavigate();
 
   type ActivityItem = { type: 'case' | 'client', date: Date, data: Case | Client };
@@ -141,7 +144,9 @@ const RecentActivity: React.FC = () => {
 };
 
 export default function Dashboard() {
-  const { addClient, saveCase, addTaskToCase, addFee } = useCrmData();
+  const { addClient } = useClients();
+  const { saveCase, addTaskToCase } = useCases();
+  const { addFee } = useFinancial();
   const { addToast } = useToast();
   const navigate = useNavigate();
 

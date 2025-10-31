@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useCrmData } from '../context/CrmContext';
+import { useCases } from '../context/CasesContext';
+import { useClients } from '../context/ClientsContext';
 import { Case, Client, SuggestedTask, CaseStatus, Fee, Expense, Task } from '../types';
 import { ArrowLeft, User, Briefcase, Bot, Loader2, PlusCircle, Sparkles, AlertCircle, Clock, Gavel } from 'lucide-react';
 import { generateCaseSummary, suggestTasksFromNotes } from '../services/geminiService';
@@ -100,7 +101,8 @@ const NotesTimeline: React.FC<{ notes: string }> = ({ notes }) => {
 
 const CaseDetails: React.FC = () => {
   const { caseId } = useParams<{ caseId: string }>();
-  const { getCaseById, getClientById, saveCase, addTaskToCase, updateTask, cases } = useCrmData();
+  const { getCaseById, saveCase, addTaskToCase, updateTask, cases } = useCases();
+  const { getClientById } = useClients();
   const { addToast } = useToast();
   
   const { caseData, client } = useMemo(() => {

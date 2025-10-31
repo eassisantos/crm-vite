@@ -1,5 +1,6 @@
 import React from 'react';
-import { useCrmData } from '../../context/CrmContext';
+import { useCases } from '../../context/CasesContext';
+import { useSettings } from '../../context/SettingsContext';
 import { Link } from 'react-router-dom';
 import { X, AlertTriangle, CalendarClock } from 'lucide-react';
 
@@ -9,7 +10,8 @@ interface DeadlineAlertModalProps {
 }
 
 const DeadlineAlertModal: React.FC<DeadlineAlertModalProps> = ({ isOpen, onClose }) => {
-  const { getUrgentTasks, getCaseById, notificationSettings } = useCrmData();
+  const { getUrgentTasks, getCaseById } = useCases();
+  const { notificationSettings } = useSettings();
   const urgentTasks = getUrgentTasks();
 
   if (!isOpen || urgentTasks.length === 0) return null;

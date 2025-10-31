@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Case, Fee, Expense, FeeStatus, FeeType } from '../../types';
-import { useCrmData } from '../../context/CrmContext';
+import { useFinancial } from '../../context/FinancialContext';
 import { useToast } from '../../context/ToastContext';
 import { DollarSign, TrendingDown, Scale, PlusCircle, Edit, Trash2, Settings, MoreVertical } from 'lucide-react';
 import FinancialEntryModal from '../financials/FinancialEntryModal';
@@ -25,7 +25,7 @@ const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string; 
 );
 
 const CaseFinancials: React.FC<CaseFinancialsProps> = ({ caseData }) => {
-  const { fees, expenses, updateFee, deleteFee, deleteExpense, addFee, addExpense } = useCrmData();
+  const { fees, expenses, updateFee, deleteFee, deleteExpense, addFee, addExpense } = useFinancial();
   const { addToast } = useToast();
 
   const [isModalOpen, setIsModalOpen] = useState(false);

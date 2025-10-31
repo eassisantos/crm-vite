@@ -1,7 +1,8 @@
 
 import React, { useMemo } from 'react';
 import { Client, Fee, Expense, FeeStatus } from '../../types';
-import { useCrmData } from '../../context/CrmContext';
+import { useCases } from '../../context/CasesContext';
+import { useFinancial } from '../../context/FinancialContext';
 import { DollarSign, TrendingDown, Scale, CheckCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -22,7 +23,8 @@ const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string; 
 );
 
 const ClientFinancials: React.FC<ClientFinancialsProps> = ({ client }) => {
-  const { cases, fees, expenses, getFinancialsByClientId } = useCrmData();
+  const { cases } = useCases();
+  const { fees, expenses, getFinancialsByClientId } = useFinancial();
 
   const clientCases = useMemo(() => cases.filter(c => c.clientId === client.id), [cases, client.id]);
   const clientCaseIds = useMemo(() => clientCases.map(c => c.id), [clientCases]);

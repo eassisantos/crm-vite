@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { useCrmData } from '../context/CrmContext';
+import { useFinancial } from '../context/FinancialContext';
+import { useCases } from '../context/CasesContext';
+import { useClients } from '../context/ClientsContext';
 import { Fee, FeeStatus, FeeType, Expense } from '../types';
 import { Link } from 'react-router-dom';
 import { DollarSign, CheckCircle, TrendingDown, PlusCircle, Scale, Edit, Trash2, Settings } from 'lucide-react';
@@ -22,7 +24,9 @@ const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string; 
 const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 export default function Financials() {
-  const { fees, expenses, cases, getClientById, addFee, addExpense, updateFee, updateExpense, deleteFee, deleteExpense } = useCrmData();
+  const { fees, expenses, addFee, addExpense, updateFee, updateExpense, deleteFee, deleteExpense } = useFinancial();
+  const { cases } = useCases();
+  const { getClientById } = useClients();
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState<'fees' | 'expenses'>('fees');
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useCrmData } from '../../context/CrmContext';
+import { useCases } from '../../context/CasesContext';
 import { useToast } from '../../context/ToastContext';
 import { X } from 'lucide-react';
 import { Task } from '../../types';
@@ -14,7 +14,7 @@ interface TaskFormModalProps {
 }
 
 const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, initialDate, preselectedCaseId }) => {
-  const { cases } = useCrmData();
+  const { cases } = useCases();
   const { addToast } = useToast();
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
