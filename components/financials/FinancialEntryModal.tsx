@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useCases } from '../../context/CasesContext';
 import { Fee, Expense, FeeType, FeeStatus } from '../../types';
 import { X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useModalAccessibility } from '../../hooks/useModalAccessibility';
 
 type EntryType = 'fee' | 'expense';
 
@@ -24,6 +25,7 @@ const FinancialEntryModal: React.FC<FinancialEntryModalProps> = ({ isOpen, onClo
   const isEditing = !!initialData;
   const title = `${isEditing ? 'Editar' : 'Novo'} ${isFee ? 'Honorário' : 'Despesa'}`;
   const buttonColor = isFee ? 'bg-sky-600 hover:bg-sky-700' : 'bg-red-600 hover:bg-red-700';
+  const confirmFocusRing = isFee ? 'focus:ring-sky-500' : 'focus:ring-red-500';
 
   const getInitialState = () => {
     if (isEditing && initialData) {
@@ -46,6 +48,10 @@ const FinancialEntryModal: React.FC<FinancialEntryModalProps> = ({ isOpen, onClo
   };
 
   const [formData, setFormData] = useState(getInitialState());
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const firstFieldRef = useRef<HTMLSelectElement>(null);
+
+  useModalAccessibility(isOpen, dialogRef, { onClose, initialFocusRef: firstFieldRef });
 
   useEffect(() => {
     if (isOpen) {
@@ -103,17 +109,48 @@ const FinancialEntryModal: React.FC<FinancialEntryModalProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" aria-modal="true" role="dialog" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        className="bg-white rounded-lg shadow-xl w-full max-w-lg focus:outline-none"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="financial-entry-modal-title"
+        aria-describedby="financial-entry-modal-description"
+        tabIndex={-1}
+      >
         <div className="p-6 border-b flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-slate-800">{title}</h2>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100"><X size={24} className="text-slate-600" /></button>
+          <h2 className="text-2xl font-bold text-slate-800" id="financial-entry-modal-title">{title}</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-slate-100 text-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
+            aria-label="Fechar modal financeiro"
+            type="button"
+          >
+            <X size={22} aria-hidden="true" />
+          </button>
         </div>
+        <p id="financial-entry-modal-description" className="sr-only">
+          Informe os dados do lançamento financeiro antes de salvar.
+        </p>
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
             <div>
               <label htmlFor="entry-caseId" className="block text-sm font-medium text-slate-700">Associar ao Caso</label>
-              <select name="caseId" id="entry-caseId" value={formData.caseId} onChange={handleChange} required className="mt-1 block w-full border-slate-300 rounded-md shadow-sm sm:text-sm">
+              <select
+                ref={firstFieldRef}
+                name="caseId"
+                id="entry-caseId"
+                value={formData.caseId}
+                onChange={handleChange}
+                required
+                className="mt-1 block w-full border-slate-300 rounded-md shadow-sm sm:text-sm"
+              >
                 <option value="" disabled>Selecione um caso</option>
                 {cases.map(c => <option key={c.id} value={c.id}>{c.title} ({c.caseNumber || 'Sem número'})</option>)}
               </select>
@@ -142,8 +179,19 @@ const FinancialEntryModal: React.FC<FinancialEntryModalProps> = ({ isOpen, onClo
             )}
           </div>
           <div className="p-6 bg-slate-50 border-t flex justify-end space-x-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
-            <button type="submit" className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${buttonColor}`}>Salvar</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${buttonColor} focus:outline-none focus:ring-2 focus:ring-offset-2 ${confirmFocusRing}`}
+            >
+              Salvar
+            </button>
           </div>
         </form>
       </div>

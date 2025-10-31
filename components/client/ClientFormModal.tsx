@@ -4,6 +4,7 @@ import { X, Bot, Loader2, FileText, AlertTriangle, User, FileBadge, MapPin, Shie
 import { extractClientInfoFromDocument, extractClientInfoFromImage, isGeminiAvailable } from '../../services/geminiService';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useToast } from '../../context/ToastContext';
+import { useModalAccessibility } from '../../hooks/useModalAccessibility';
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error && error.message ? error.message : fallback;
@@ -88,6 +89,8 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   const [isRepUpload, setIsRepUpload] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const firstFieldRef = useRef<HTMLInputElement>(null);
 
   const [isCepLoading, setIsCepLoading] = useState(false);
   const [isRepCepLoading, setIsRepCepLoading] = useState(false);
@@ -397,17 +400,45 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" aria-modal="true" role="dialog">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col focus:outline-none"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="client-form-modal-title"
+        aria-describedby="client-form-modal-description"
+        tabIndex={-1}
+      >
         <input ref={fileInputRef} type="file" className="sr-only" onChange={handleFileChange} accept="image/png, image/jpeg, image/jpg, application/pdf" />
         <div className="p-6 border-b flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-slate-800">
+            <h2 className="text-2xl font-bold text-slate-800" id="client-form-modal-title">
                 {step === 'clientDetails' ? (initialData ? 'Editar Cliente' : 'Novo Cliente') : `Novo Caso para ${newlyCreatedClient?.name}`}
             </h2>
-            <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100"><X size={24} className="text-slate-600" /></button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full hover:bg-slate-100 text-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400"
+              aria-label="Fechar formulário de cliente"
+              type="button"
+            >
+              <X size={22} aria-hidden="true" />
+            </button>
         </div>
+        <p id="client-form-modal-description" className="sr-only">
+          Preencha os dados cadastrais do cliente e avance para criar um novo caso quando necessário.
+        </p>
         <div className="flex-1 flex flex-col min-h-0">
-            {isAnalyzing && <div className="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-sky-600" /><p className="mt-4 font-semibold text-slate-700">Analisando documento...</p></div>}
+            {isAnalyzing && (
+              <div className="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center" role="status" aria-live="assertive">
+                <Loader2 className="h-12 w-12 animate-spin text-sky-600" aria-hidden="true" />
+                <p className="mt-4 font-semibold text-slate-700">Analisando documento...</p>
+              </div>
+            )}
             {step === 'clientDetails' ? (
                 <form onSubmit={(e) => e.preventDefault()} className="flex-1 flex flex-col min-h-0">
                     <div className="border-b border-slate-200 px-6">
@@ -422,7 +453,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
                         {currentTab === 'contact' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
                                 <div className="md:col-span-2 space-y-4">
-                                    <FormField label="Email" htmlFor="email"><input type="email" name="email" id="email" value={formData.email} onChange={handleFormChange} required className="mt-1 block w-full border-slate-300 rounded-md shadow-sm sm:text-sm" /></FormField>
+                                    <FormField label="Email" htmlFor="email"><input ref={firstFieldRef} type="email" name="email" id="email" value={formData.email} onChange={handleFormChange} required className="mt-1 block w-full border-slate-300 rounded-md shadow-sm sm:text-sm" /></FormField>
                                     <FormField label="Telefone" htmlFor="phone"><input type="tel" name="phone" id="phone" value={formData.phone} onChange={handleFormChange} required className="mt-1 block w-full border-slate-300 rounded-md shadow-sm sm:text-sm" /></FormField>
                                 </div>
                                 <div className="md:col-span-2"><AiUploadSection isRep={false} /></div>
@@ -508,9 +539,9 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
                         {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
                     </div>
                     <div className="p-6 bg-slate-50 border-t flex justify-end space-x-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50">Cancelar</button>
-                        <button type="button" onClick={handleSaveAndClose} className="px-4 py-2 bg-sky-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-sky-700">Salvar e Fechar</button>
-                        {!initialData && <button type="button" onClick={handleSaveAndCreateCase} className="px-4 py-2 bg-emerald-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-emerald-700 flex items-center">Salvar e Criar Caso <ArrowRight size={16} className="ml-2" /></button>}
+                        <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-400">Cancelar</button>
+                        <button type="button" onClick={handleSaveAndClose} className="px-4 py-2 bg-sky-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500">Salvar e Fechar</button>
+                        {!initialData && <button type="button" onClick={handleSaveAndCreateCase} className="px-4 py-2 bg-emerald-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-emerald-700 flex items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Salvar e Criar Caso <ArrowRight size={16} className="ml-2" /></button>}
                     </div>
                 </form>
             ) : (
