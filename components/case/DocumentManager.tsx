@@ -88,7 +88,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
         }
     } else {
         if (!isAIAvailable) {
-            addToast('Classificação automática indisponível. Configure VITE_GEMINI_API_KEY para habilitar a análise por IA.', 'warning');
+            addToast('Classificação automática indisponível. Configure a URL do proxy VITE_AI_PROXY_URL para habilitar a análise por IA.', 'warning');
             saveDocument(file, file.name);
             if(event.target) event.target.value = '';
             setUploadingDocName(null);
@@ -204,7 +204,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
             <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                 <Sparkles className="mt-0.5 text-amber-600" size={18} />
                 <p>
-                    A classificação automática via IA está desativada porque a variável <strong>VITE_GEMINI_API_KEY</strong> não foi configurada.
+                    A classificação automática via IA está desativada porque a variável <strong>VITE_AI_PROXY_URL</strong> não foi configurada.
                     Os documentos serão enviados sem sugestão automática até que a integração seja habilitada.
                 </p>
             </div>
