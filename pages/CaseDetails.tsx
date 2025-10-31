@@ -6,6 +6,7 @@ import { useClients } from '../context/ClientsContext';
 import { Case, Client, SuggestedTask, CaseStatus, Fee, Expense, Task } from '../types';
 import { ArrowLeft, User, Briefcase, Bot, Loader2, PlusCircle, Sparkles, AlertCircle, Clock, Gavel } from 'lucide-react';
 import { generateCaseSummary, suggestTasksFromNotes, isGeminiAvailable } from '../services/geminiService';
+import { renderSafeRichText } from '../utils/sanitize';
 import DocumentManager from '../components/case/DocumentManager';
 import LegalDocumentsManager from '../components/case/LegalDocumentsManager';
 import { useToast } from '../context/ToastContext';
@@ -28,14 +29,6 @@ const DetailItem: React.FC<{ icon: React.ReactNode; label: string; value: React.
 
 const Spinner: React.FC = () => <Loader2 className="animate-spin" />;
 
-const sanitizeHTML = (htmlString: string) => {
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlString
-    .replace(/###\s*(.*?)\n/g, '<h3 class="font-bold text-lg mb-2 mt-4">$1</h3>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br />');
-  return tempDiv.innerHTML;
-};
 
 const statusColors: Record<CaseStatus, string> = {
   'Aberto': 'bg-blue-100 text-blue-800',
@@ -129,7 +122,7 @@ const CaseDetails: React.FC = () => {
   const handleGenerateSummary = async () => {
     if (!caseData || !client) return;
     if (!isAIAvailable) {
-      const message = 'Resumo automatizado indisponível. Configure VITE_GEMINI_API_KEY para ativar a IA.';
+      const message = 'Resumo automatizado indisponível. Configure a URL do proxy VITE_AI_PROXY_URL para ativar a IA.';
       setError(message);
       addToast(message, 'warning');
       return;
@@ -152,7 +145,7 @@ const CaseDetails: React.FC = () => {
   const handleSuggestTasks = async () => {
     if (!caseData?.notes) return;
     if (!isAIAvailable) {
-        const message = 'Sugestões de tarefas indisponíveis. Configure VITE_GEMINI_API_KEY para ativar a IA.';
+        const message = 'Sugestões de tarefas indisponíveis. Configure a URL do proxy VITE_AI_PROXY_URL para ativar a IA.';
         setError(message);
         addToast(message, 'warning');
         return;
@@ -250,7 +243,7 @@ const CaseDetails: React.FC = () => {
         {!isAIAvailable && (
           <div className="my-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <Sparkles size={18} className="mt-0.5 text-amber-600" />
-            <p>Os recursos de IA estão desativados porque a variável de ambiente <strong>VITE_GEMINI_API_KEY</strong> não foi definida. Entre em contato com o administrador para habilitar os recursos automáticos.</p>
+            <p>Os recursos de IA estão desativados porque a variável de ambiente <strong>VITE_AI_PROXY_URL</strong> não foi definida. Entre em contato com o administrador para habilitar os recursos automáticos.</p>
           </div>
         )}
         
@@ -266,7 +259,7 @@ const CaseDetails: React.FC = () => {
                             <h2 className="text-xl font-bold text-slate-800 flex items-center"><Bot size={24} className="mr-2 text-sky-600"/> Resumo com IA</h2>
                             <button onClick={handleGenerateSummary} disabled={isGeneratingSummary || !isAIAvailable} className="flex items-center bg-sky-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-sky-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed">{isGeneratingSummary ? <Spinner /> : <Sparkles size={20} />}<span className="ml-2">{isGeneratingSummary ? 'Gerando...' : 'Gerar Resumo'}</span></button>
                         </div>
-                        {caseData.aiSummary ? <div className="prose prose-slate max-w-none p-4 bg-slate-50 rounded-lg border" dangerouslySetInnerHTML={{ __html: sanitizeHTML(caseData.aiSummary) }} /> : <div className="text-center py-8 text-slate-500"><p>Clique para criar um resumo do caso usando IA.</p></div>}
+                        {caseData.aiSummary ? <div className="prose prose-slate max-w-none p-4 bg-slate-50 rounded-lg border" dangerouslySetInnerHTML={{ __html: renderSafeRichText(caseData.aiSummary) }} /> : <div className="text-center py-8 text-slate-500"><p>Clique para criar um resumo do caso usando IA.</p></div>}
                     </div>
                     <div className="space-y-4 bg-slate-50 p-6 rounded-lg border">
                         <h2 className="text-xl font-bold text-slate-800">Informações Gerais</h2>

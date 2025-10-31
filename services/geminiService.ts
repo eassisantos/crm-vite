@@ -1,14 +1,13 @@
-import { GoogleGenAI, GenerateContentResponse, Type, Chat } from '@google/genai';
 import { Case, Client } from '../types';
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-export const isGeminiAvailable = Boolean(API_KEY);
+const RAW_PROXY_URL = (import.meta.env.VITE_AI_PROXY_URL || '').trim();
+const PROXY_BASE = RAW_PROXY_URL.replace(/\/$/, '');
+
+export const isGeminiAvailable = PROXY_BASE.length > 0;
 
 if (!isGeminiAvailable && import.meta.env.DEV) {
-  console.warn('VITE_GEMINI_API_KEY não está definida. As funcionalidades de IA serão executadas em modo de fallback.');
+  console.warn('VITE_AI_PROXY_URL não está definida. As funcionalidades de IA serão executadas em modo de fallback.');
 }
-
-const ai = isGeminiAvailable ? new GoogleGenAI({ apiKey: API_KEY, vertexai: true }) : null;
 
 const FALLBACK_TEXT = 'IA indisponível no momento. Por favor, tente novamente mais tarde.';
 
@@ -18,49 +17,98 @@ const devLog = (...args: unknown[]) => {
   }
 };
 
-// Helper para tratamento de erros da API
-function handleApiError(error: unknown, context: string): never {
-  if (import.meta.env.DEV) {
-    console.error(`Error in ${context}:`, error);
+class ProxyRequestError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'ProxyRequestError';
+    this.status = status;
   }
-  if (error instanceof Error) {
-    if (error.message.includes('400')) {
-      throw new Error(`[${context}] Requisição inválida. Verifique os dados enviados.`);
-    }
-    if (error.message.includes('429')) {
-      throw new Error(`[${context}] Muitas requisições. Por favor, aguarde um momento antes de tentar novamente.`);
-    }
-    if (error.message.includes('500') || error.message.includes('503')) {
-      throw new Error(`[${context}] O serviço de IA está temporariamente indisponível. Tente novamente mais tarde.`);
-    }
-    if (error.message.includes('API key not valid')) {
-      throw new Error(`[${context}] A chave da API não é válida. Verifique a configuração.`);
-    }
-  }
-  throw new Error(`[${context}] Ocorreu um erro inesperado. Verifique o console para detalhes.`);
 }
 
-let chat: Chat | null = null;
+async function parseResponseBody(response: Response): Promise<any> {
+  const contentType = response.headers.get('content-type') || '';
+  const text = await response.text();
 
-function getChatSession(): Chat | null {
-  if (!ai) {
-    return null;
+  if (contentType.includes('application/json')) {
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      devLog('Resposta JSON inválida recebida do proxy de IA.', error, text);
+      throw new ProxyRequestError('O proxy de IA retornou uma resposta inválida.', response.status);
+    }
   }
-  if (chat) {
-    return chat;
+
+  if (!text) {
+    return {};
   }
-  chat = ai.chats.create({
-    model: 'gemini-2.5-flash',
-    config: {
-      systemInstruction: `Você é um assistente jurídico de elite para um CRM. Seu nome é JurisAI.
-      - Forneça respostas claras, bem-estruturadas e concisas.
-      - Use formatação markdown (negrito, itálico, listas) para melhorar a legibilidade.
-      - Ao responder a perguntas que podem exigir informações atuais, use a ferramenta de busca.
-      - NUNCA forneça conselhos legais. Em vez disso, forneça informações, resumos e análises baseadas nos dados disponíveis.
-      - Sempre responda em português do Brasil.`,
-    },
-  });
-  return chat;
+
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    return { message: text };
+  }
+}
+
+async function postToProxy<T>(path: string, payload: unknown, context: string): Promise<T> {
+  if (!isGeminiAvailable) {
+    throw new ProxyRequestError('Proxy de IA não configurado.', 503);
+  }
+
+  const url = `${PROXY_BASE}${path}`;
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload ?? {}),
+    });
+  } catch (error) {
+    devLog(`Erro de rede em ${context}`, error);
+    throw new ProxyRequestError('Não foi possível conectar ao proxy de IA.', undefined);
+  }
+
+  const body = await parseResponseBody(response);
+
+  if (!response.ok) {
+    const message =
+      (typeof body === 'string' && body) ||
+      body?.error ||
+      body?.message ||
+      `Falha ao se comunicar com o proxy de IA (${response.status}).`;
+    throw new ProxyRequestError(message, response.status);
+  }
+
+  return body as T;
+}
+
+function handleProxyError(error: unknown, context: string): never {
+  if (import.meta.env.DEV) {
+    console.error(`[GeminiService] ${context}`, error);
+  }
+
+  if (error instanceof ProxyRequestError) {
+    if (error.status === 401 || error.status === 403) {
+      throw new Error(`[${context}] Acesso negado pelo proxy de IA. Verifique as credenciais do servidor.`);
+    }
+    if (error.status === 429) {
+      throw new Error(`[${context}] Muitas requisições. Aguarde um momento antes de tentar novamente.`);
+    }
+    if (error.status && error.status >= 500) {
+      throw new Error(`[${context}] O serviço de IA está temporariamente indisponível. Tente novamente mais tarde.`);
+    }
+    throw new Error(`[${context}] ${error.message}`);
+  }
+
+  if (error instanceof Error) {
+    throw new Error(`[${context}] ${error.message}`);
+  }
+
+  throw new Error(`[${context}] Não foi possível processar sua solicitação no momento.`);
 }
 
 export async function streamChatResponse(
@@ -68,271 +116,168 @@ export async function streamChatResponse(
   onChunk: (chunk: string) => void,
   onSources: (sources: any[]) => void
 ) {
-  if (!isGeminiAvailable || !ai) {
+  if (!isGeminiAvailable) {
     devLog('streamChatResponse fallback acionado.');
     onChunk(FALLBACK_TEXT);
     onSources([]);
     return;
   }
 
-  const chatSession = getChatSession();
-  if (!chatSession) {
-    devLog('Chat session não pôde ser criada. Retornando fallback.');
-    onChunk(FALLBACK_TEXT);
-    onSources([]);
-    return;
-  }
-
   try {
-    const result = await chatSession.sendMessageStream({
-      message: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      }
-    });
+    const data = await postToProxy<{ text?: string; answer?: string; message?: string; sources?: any[] }>(
+      '/chat',
+      { prompt },
+      'streamChatResponse'
+    );
 
-    let fullResponseText = '';
-    for await (const chunk of result) {
-      const chunkText = chunk.text;
-      if (chunkText) {
-        fullResponseText += chunkText;
-        onChunk(fullResponseText);
-      }
-      const groundingMetadata = chunk.candidates?.[0]?.groundingMetadata;
-      if (groundingMetadata?.groundingChunks) {
-        const sources = groundingMetadata.groundingChunks
-          .map((c: any) => c.web)
-          .filter(Boolean);
-        if (sources.length > 0) {
-          onSources(sources);
-        }
-      }
-    }
+    const responseText = data?.text || data?.answer || data?.message || '';
+    onChunk(responseText || FALLBACK_TEXT);
+    onSources(Array.isArray(data?.sources) ? data.sources : []);
   } catch (error) {
-    handleApiError(error, 'streamChatResponse');
+    handleProxyError(error, 'streamChatResponse');
   }
 }
 
 export async function generateCaseSummary(caseData: Case, client: Client): Promise<string> {
-  const model = 'gemini-2.5-flash';
-
-  const prompt = `
-    Você é um assistente jurídico especialista.
-    Com base nos seguintes detalhes do caso, gere um resumo conciso e bem estruturado em markdown.
-    O resumo deve ser claro, objetivo e focado nos pontos chave. Use títulos (###), negrito (**) e quebras de linha para formatação.
-
-    ### Detalhes do Caso
-    - **Número do Processo:** ${caseData.caseNumber}
-    - **Título:** ${caseData.title}
-    - **Cliente:** ${client.name}
-    - **Status Atual:** ${caseData.status}
-    - **Tipo de Ação/Benefício:** ${caseData.benefitType}
-    - **Últimas Notas/Andamentos:** ${caseData.notes}
-    - **Tarefas Pendentes:** ${caseData.tasks.filter((t: any) => !t.completed).map((t: any) => t.description).join(', ') || 'Nenhuma'}
-
-    Gere o resumo abaixo:
-  `;
-
-  if (!isGeminiAvailable || !ai) {
+  if (!isGeminiAvailable) {
     devLog('generateCaseSummary fallback acionado.');
     return FALLBACK_TEXT;
   }
 
   try {
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model,
-      contents: { role: 'user', parts: [{ text: prompt }] },
-    });
-    return response.text;
+    const data = await postToProxy<{ summary?: string; text?: string; message?: string }>(
+      '/case-summary',
+      { case: caseData, client },
+      'generateCaseSummary'
+    );
+    return data?.summary || data?.text || data?.message || FALLBACK_TEXT;
   } catch (error) {
-    handleApiError(error, 'generateCaseSummary');
+    handleProxyError(error, 'generateCaseSummary');
   }
 }
 
 export async function suggestTasksFromNotes(notes: string): Promise<string> {
-  const model = 'gemini-2.5-flash';
-
-  const prompt = `
-    Analise as seguintes notas de um caso jurídico e sugira uma lista de até 3 próximas ações ou tarefas em formato JSON.
-    Para cada tarefa, forneça:
-    1.  'description': Uma descrição clara e acionável da tarefa.
-    2.  'dueDate': Uma data de vencimento sugerida no formato 'YYYY-MM-DD'. Se nenhuma data for mencionada, sugira para 7 dias a partir de hoje.
-    3.  'reasoning': Uma breve justificativa do porquê a tarefa é necessária com base nas notas.
-
-    **Notas do Caso:**
-    "${notes}"
-
-    Retorne apenas o array JSON.
-  `;
-
-  const today = new Date();
-  const suggestedDueDate = new Date(today.setDate(today.getDate() + 7)).toISOString().split('T')[0];
-
-  if (!isGeminiAvailable || !ai) {
+  if (!isGeminiAvailable) {
     devLog('suggestTasksFromNotes fallback acionado.');
     return '[]';
   }
 
   try {
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model,
-      contents: { role: 'user', parts: [{ text: prompt }] },
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              description: { type: Type.STRING },
-              dueDate: { type: Type.STRING, default: suggestedDueDate },
-              reasoning: { type: Type.STRING },
-            },
-            required: ['description', 'reasoning']
-          },
-        },
-      },
-    });
+    const data = await postToProxy<{ tasks?: string; suggestions?: unknown; text?: string }>(
+      '/suggest-tasks',
+      { notes },
+      'suggestTasksFromNotes'
+    );
 
-    return response.text;
+    if (typeof data?.tasks === 'string') {
+      return data.tasks;
+    }
+    if (Array.isArray((data as any)?.suggestions)) {
+      return JSON.stringify((data as any).suggestions);
+    }
+    if (typeof data?.text === 'string') {
+      return data.text;
+    }
+    return '[]';
   } catch (error) {
-    handleApiError(error, 'suggestTasksFromNotes');
+    handleProxyError(error, 'suggestTasksFromNotes');
   }
 }
 
-const clientSchema = {
-    type: Type.OBJECT,
-    properties: {
-        name: { type: Type.STRING },
-        motherName: { type: Type.STRING },
-        fatherName: { type: Type.STRING },
-        cpf: { type: Type.STRING },
-        rg: { type: Type.STRING },
-        rgIssuer: { type: Type.STRING },
-        rgIssuerUF: { type: Type.STRING },
-        dataEmissao: { type: Type.STRING },
-        dateOfBirth: { type: Type.STRING },
-        nacionalidade: { type: Type.STRING },
-        naturalidade: { type: Type.STRING },
-        estadoCivil: { type: Type.STRING },
-        profissao: { type: Type.STRING },
-        email: { type: Type.STRING },
-        phone: { type: Type.STRING },
-        cep: { type: Type.STRING },
-        street: { type: Type.STRING },
-        number: { type: Type.STRING },
-        complement: { type: Type.STRING },
-        neighborhood: { type: Type.STRING },
-        city: { type: Type.STRING },
-        state: { type: Type.STRING },
-    }
-};
-
 export async function extractClientInfoFromDocument(text: string, documentType: string): Promise<string> {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Extraia as seguintes informações de um(a) **${documentType}**. O texto foi extraído de um documento. Retorne em formato JSON. Se uma informação não for encontrada, retorne uma string vazia para a chave correspondente. Formate datas como YYYY-MM-DD.\n\nTexto:\n${text}`;
+  if (!isGeminiAvailable) {
+    devLog('extractClientInfoFromDocument fallback acionado.');
+    return '{}';
+  }
 
-    if (!isGeminiAvailable || !ai) {
-        devLog('extractClientInfoFromDocument fallback acionado.');
-        return '{}';
+  try {
+    const data = await postToProxy<{ json?: string; data?: unknown }>(
+      '/client-info/from-document',
+      { text, documentType },
+      'extractClientInfoFromDocument'
+    );
+
+    if (typeof data?.json === 'string') {
+      return data.json;
     }
 
-    try {
-        const response = await ai.models.generateContent({
-            model,
-            contents: { role: 'user', parts: [{ text: prompt }] },
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: clientSchema,
-            }
-        });
-        return response.text;
-    } catch (error) {
-        handleApiError(error, 'extractClientInfoFromDocument');
+    if (data && typeof data === 'object' && data !== null) {
+      try {
+        return JSON.stringify(data);
+      } catch (error) {
+        devLog('Falha ao converter resposta do proxy em JSON.', error, data);
+      }
     }
+
+    return '{}';
+  } catch (error) {
+    handleProxyError(error, 'extractClientInfoFromDocument');
+  }
 }
 
-export async function extractClientInfoFromImage(base64Image: string, mimeType: string, documentType: string): Promise<string> {
-    const model = 'gemini-2.5-flash';
-    const prompt = `Extraia as informações desta imagem de um(a) **${documentType}** e retorne em formato JSON. Se uma informação não for encontrada, retorne uma string vazia. Formate datas como YYYY-MM-DD.`;
+export async function extractClientInfoFromImage(
+  base64Image: string,
+  mimeType: string,
+  documentType: string
+): Promise<string> {
+  if (!isGeminiAvailable) {
+    devLog('extractClientInfoFromImage fallback acionado.');
+    return '{}';
+  }
 
-    if (!isGeminiAvailable || !ai) {
-        devLog('extractClientInfoFromImage fallback acionado.');
-        return '{}';
+  try {
+    const data = await postToProxy<{ json?: string; data?: unknown }>(
+      '/client-info/from-image',
+      { base64Image, mimeType, documentType },
+      'extractClientInfoFromImage'
+    );
+
+    if (typeof data?.json === 'string') {
+      return data.json;
     }
 
-    try {
-        const response = await ai.models.generateContent({
-            model,
-            contents: {
-                role: 'user',
-                parts: [
-                    { inlineData: { mimeType, data: base64Image } },
-                    { text: prompt }
-                ]
-            },
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: clientSchema,
-            }
-        });
-        return response.text;
-    } catch (error) {
-        handleApiError(error, 'extractClientInfoFromImage');
+    if (data && typeof data === 'object' && data !== null) {
+      try {
+        return JSON.stringify(data);
+      } catch (error) {
+        devLog('Falha ao converter resposta do proxy em JSON.', error, data);
+      }
     }
+
+    return '{}';
+  } catch (error) {
+    handleProxyError(error, 'extractClientInfoFromImage');
+  }
 }
 
 export async function classifyDocument(
-  documentContent: string, // Can be text or base64 image data
-  mimeType: string | null, // Mime type if it's an image, null if text
+  documentContent: string,
+  mimeType: string | null,
   checklist: string[]
 ): Promise<string> {
-  const model = 'gemini-2.5-flash';
-
-  const prompt = `
-    Você é um assistente de escritório de advocacia especializado em triagem de documentos.
-    Sua tarefa é classificar o documento fornecido em uma das seguintes categorias:
-    [${checklist.join(', ')}, Outro]
-
-    Analise o conteúdo do documento e retorne APENAS o nome exato da categoria da lista que melhor o descreve.
-    Se o documento não se encaixar claramente em nenhuma das categorias da lista, retorne "Outro".
-    Não adicione nenhuma explicação ou formatação, apenas o nome da categoria.
-  `;
-
-  const parts: any[] = [];
-  if (mimeType && documentContent) {
-    parts.push({ inlineData: { mimeType, data: documentContent } });
-    parts.push({ text: prompt });
-  } else {
-    parts.push({ text: `Conteúdo do documento (texto extraído): "${documentContent}"\n\n${prompt}` });
-  }
-
-  if (!isGeminiAvailable || !ai) {
+  if (!isGeminiAvailable) {
     devLog('classifyDocument fallback acionado.');
     return 'Outro';
   }
 
   try {
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model,
-      contents: { role: 'user', parts },
-    });
+    const data = await postToProxy<{ classification?: string; category?: string }>(
+      '/classify-document',
+      { documentContent, mimeType, checklist },
+      'classifyDocument'
+    );
 
-    const classification = response.text.trim();
+    const rawClassification = (data?.classification || data?.category || '').trim();
+    if (!rawClassification) {
+      return 'Outro';
+    }
 
+    const normalized = rawClassification.toLowerCase();
     const validCategories = [...checklist, 'Outro'];
-    if (validCategories.map(v => v.toLowerCase()).includes(classification.toLowerCase())) {
-      // Find the original casing
-      const originalCategory = validCategories.find(v => v.toLowerCase() === classification.toLowerCase());
-      return originalCategory || 'Outro';
-    }
+    const match = validCategories.find((option) => option.toLowerCase() === normalized);
 
-    if (import.meta.env.DEV) {
-      console.warn(`AI classification returned an unexpected value: "${classification}". Defaulting to "Outro".`);
-    }
-    return 'Outro';
-
+    return match || 'Outro';
   } catch (error) {
-    handleApiError(error, 'classifyDocument');
+    handleProxyError(error, 'classifyDocument');
   }
 }
