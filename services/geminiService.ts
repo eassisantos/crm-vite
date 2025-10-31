@@ -1,44 +1,50 @@
-
 import { GoogleGenAI, GenerateContentResponse, Type, Chat } from '@google/genai';
 import { Case, Client } from '../types';
 
-// A chave da API é obtida exclusivamente da variável de ambiente `process.env.API_KEY`.
-// Assume-se que esta variável está pré-configurada e acessível no contexto de execução.
-// @ts-ignore - process.env é esperado no ambiente de execução do sandbox.
-const API_KEY = process.env.API_KEY;
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+export const isGeminiAvailable = Boolean(API_KEY);
 
-if (!API_KEY) {
-  throw new Error("A variável de ambiente API_KEY não está definida. As funcionalidades de IA serão desativadas.");
+if (!isGeminiAvailable && import.meta.env.DEV) {
+  console.warn('VITE_GEMINI_API_KEY não está definida. As funcionalidades de IA serão executadas em modo de fallback.');
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY, vertexai: true });
+const ai = isGeminiAvailable ? new GoogleGenAI({ apiKey: API_KEY, vertexai: true }) : null;
+
+const FALLBACK_TEXT = 'IA indisponível no momento. Por favor, tente novamente mais tarde.';
+
+const devLog = (...args: unknown[]) => {
+  if (import.meta.env.DEV) {
+    console.log('[GeminiService]', ...args);
+  }
+};
 
 // Helper para tratamento de erros da API
 function handleApiError(error: unknown, context: string): never {
+  if (import.meta.env.DEV) {
     console.error(`Error in ${context}:`, error);
-    if (error instanceof Error) {
-        if (error.message.includes('400')) {
-            throw new Error(`[${context}] Requisição inválida. Verifique os dados enviados.`);
-        }
-        if (error.message.includes('429')) {
-            throw new Error(`[${context}] Muitas requisições. Por favor, aguarde um momento antes de tentar novamente.`);
-        }
-        if (error.message.includes('500') || error.message.includes('503')) {
-            throw new Error(`[${context}] O serviço de IA está temporariamente indisponível. Tente novamente mais tarde.`);
-        }
-        if (error.message.includes('API key not valid')) {
-            throw new Error(`[${context}] A chave da API não é válida. Verifique a configuração.`);
-        }
+  }
+  if (error instanceof Error) {
+    if (error.message.includes('400')) {
+      throw new Error(`[${context}] Requisição inválida. Verifique os dados enviados.`);
     }
-    throw new Error(`[${context}] Ocorreu um erro inesperado. Verifique o console para detalhes.`);
+    if (error.message.includes('429')) {
+      throw new Error(`[${context}] Muitas requisições. Por favor, aguarde um momento antes de tentar novamente.`);
+    }
+    if (error.message.includes('500') || error.message.includes('503')) {
+      throw new Error(`[${context}] O serviço de IA está temporariamente indisponível. Tente novamente mais tarde.`);
+    }
+    if (error.message.includes('API key not valid')) {
+      throw new Error(`[${context}] A chave da API não é válida. Verifique a configuração.`);
+    }
+  }
+  throw new Error(`[${context}] Ocorreu um erro inesperado. Verifique o console para detalhes.`);
 }
-
 
 let chat: Chat | null = null;
 
-function getChatSession(): Chat {
+function getChatSession(): Chat | null {
   if (!ai) {
-    throw new Error("Gemini AI client is not initialized. Please check your API_KEY.");
+    return null;
   }
   if (chat) {
     return chat;
@@ -57,13 +63,26 @@ function getChatSession(): Chat {
   return chat;
 }
 
-export async function streamChatResponse(prompt: string, onChunk: (chunk: string) => void, onSources: (sources: any[]) => void) {
-  if (!ai) {
-    throw new Error("AI client not available.");
+export async function streamChatResponse(
+  prompt: string,
+  onChunk: (chunk: string) => void,
+  onSources: (sources: any[]) => void
+) {
+  if (!isGeminiAvailable || !ai) {
+    devLog('streamChatResponse fallback acionado.');
+    onChunk(FALLBACK_TEXT);
+    onSources([]);
+    return;
   }
-  
+
   const chatSession = getChatSession();
-  
+  if (!chatSession) {
+    devLog('Chat session não pôde ser criada. Retornando fallback.');
+    onChunk(FALLBACK_TEXT);
+    onSources([]);
+    return;
+  }
+
   try {
     const result = await chatSession.sendMessageStream({
       message: prompt,
@@ -72,7 +91,7 @@ export async function streamChatResponse(prompt: string, onChunk: (chunk: string
       }
     });
 
-    let fullResponseText = "";
+    let fullResponseText = '';
     for await (const chunk of result) {
       const chunkText = chunk.text;
       if (chunkText) {
@@ -96,7 +115,7 @@ export async function streamChatResponse(prompt: string, onChunk: (chunk: string
 
 export async function generateCaseSummary(caseData: Case, client: Client): Promise<string> {
   const model = 'gemini-2.5-flash';
-  
+
   const prompt = `
     Você é um assistente jurídico especialista.
     Com base nos seguintes detalhes do caso, gere um resumo conciso e bem estruturado em markdown.
@@ -113,6 +132,11 @@ export async function generateCaseSummary(caseData: Case, client: Client): Promi
 
     Gere o resumo abaixo:
   `;
+
+  if (!isGeminiAvailable || !ai) {
+    devLog('generateCaseSummary fallback acionado.');
+    return FALLBACK_TEXT;
+  }
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
@@ -144,6 +168,11 @@ export async function suggestTasksFromNotes(notes: string): Promise<string> {
   const today = new Date();
   const suggestedDueDate = new Date(today.setDate(today.getDate() + 7)).toISOString().split('T')[0];
 
+  if (!isGeminiAvailable || !ai) {
+    devLog('suggestTasksFromNotes fallback acionado.');
+    return '[]';
+  }
+
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model,
@@ -164,7 +193,7 @@ export async function suggestTasksFromNotes(notes: string): Promise<string> {
         },
       },
     });
-    
+
     return response.text;
   } catch (error) {
     handleApiError(error, 'suggestTasksFromNotes');
@@ -203,6 +232,11 @@ export async function extractClientInfoFromDocument(text: string, documentType: 
     const model = 'gemini-2.5-flash';
     const prompt = `Extraia as seguintes informações de um(a) **${documentType}**. O texto foi extraído de um documento. Retorne em formato JSON. Se uma informação não for encontrada, retorne uma string vazia para a chave correspondente. Formate datas como YYYY-MM-DD.\n\nTexto:\n${text}`;
 
+    if (!isGeminiAvailable || !ai) {
+        devLog('extractClientInfoFromDocument fallback acionado.');
+        return '{}';
+    }
+
     try {
         const response = await ai.models.generateContent({
             model,
@@ -221,6 +255,11 @@ export async function extractClientInfoFromDocument(text: string, documentType: 
 export async function extractClientInfoFromImage(base64Image: string, mimeType: string, documentType: string): Promise<string> {
     const model = 'gemini-2.5-flash';
     const prompt = `Extraia as informações desta imagem de um(a) **${documentType}** e retorne em formato JSON. Se uma informação não for encontrada, retorne uma string vazia. Formate datas como YYYY-MM-DD.`;
+
+    if (!isGeminiAvailable || !ai) {
+        devLog('extractClientInfoFromImage fallback acionado.');
+        return '{}';
+    }
 
     try {
         const response = await ai.models.generateContent({
@@ -249,7 +288,7 @@ export async function classifyDocument(
   checklist: string[]
 ): Promise<string> {
   const model = 'gemini-2.5-flash';
-  
+
   const prompt = `
     Você é um assistente de escritório de advocacia especializado em triagem de documentos.
     Sua tarefa é classificar o documento fornecido em uma das seguintes categorias:
@@ -268,22 +307,29 @@ export async function classifyDocument(
     parts.push({ text: `Conteúdo do documento (texto extraído): "${documentContent}"\n\n${prompt}` });
   }
 
+  if (!isGeminiAvailable || !ai) {
+    devLog('classifyDocument fallback acionado.');
+    return 'Outro';
+  }
+
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model,
       contents: { role: 'user', parts },
     });
-    
+
     const classification = response.text.trim();
-    
+
     const validCategories = [...checklist, 'Outro'];
     if (validCategories.map(v => v.toLowerCase()).includes(classification.toLowerCase())) {
       // Find the original casing
       const originalCategory = validCategories.find(v => v.toLowerCase() === classification.toLowerCase());
       return originalCategory || 'Outro';
     }
-    
-    console.warn(`AI classification returned an unexpected value: "${classification}". Defaulting to "Outro".`);
+
+    if (import.meta.env.DEV) {
+      console.warn(`AI classification returned an unexpected value: "${classification}". Defaulting to "Outro".`);
+    }
     return 'Outro';
 
   } catch (error) {

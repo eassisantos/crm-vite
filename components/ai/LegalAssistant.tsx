@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Loader2, Link as LinkIcon, AlertTriangle } from 'lucide-react';
-import { streamChatResponse } from '../../services/geminiService';
+import { Sparkles, Send, Loader2, Link as LinkIcon, AlertTriangle, Info } from 'lucide-react';
+import { streamChatResponse, isGeminiAvailable } from '../../services/geminiService';
 import { ChatMessage } from '../../types';
 
 const TypingIndicator = () => (
@@ -29,8 +29,12 @@ const promptStarters = [
 ];
 
 export default function LegalAssistant() {
+  const isAssistantAvailable = isGeminiAvailable;
+  const assistantGreeting = isAssistantAvailable
+    ? 'Olá! Sou o JurisAI, seu assistente jurídico. Como posso ajudar hoje? Posso resumir um caso, pesquisar jurisprudência ou redigir um rascunho de documento.'
+    : 'Olá! O JurisAI está temporariamente indisponível porque a integração com IA não está configurada. Adicione a chave VITE_GEMINI_API_KEY para habilitar esta funcionalidade.';
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: 'init', role: 'model', text: 'Olá! Sou o JurisAI, seu assistente jurídico. Como posso ajudar hoje? Posso resumir um caso, pesquisar jurisprudência ou redigir um rascunho de documento.' }
+    { id: 'init', role: 'model', text: assistantGreeting }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +51,10 @@ export default function LegalAssistant() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAssistantAvailable) {
+      setError('O assistente de IA está indisponível no momento. Configure a chave VITE_GEMINI_API_KEY para utilizar este recurso.');
+      return;
+    }
     if (!input.trim() || isLoading) return;
 
     const userMessage: ChatMessage = { id: Date.now().toString(), role: 'user', text: input };
@@ -85,6 +93,16 @@ export default function LegalAssistant() {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {!isAssistantAvailable && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+              <Info size={16} />
+            </div>
+            <p>
+              Os recursos de IA estão desativados porque a variável de ambiente <strong>VITE_GEMINI_API_KEY</strong> não foi definida. Entre em contato com o administrador para habilitar o assistente.
+            </p>
+          </div>
+        )}
         {messages.map((msg, index) => (
           <React.Fragment key={msg.id}>
             <div className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
@@ -97,7 +115,7 @@ export default function LegalAssistant() {
                 {msg.text ? <FormattedMessage text={msg.text} /> : <TypingIndicator />}
               </div>
             </div>
-            {index === 0 && (
+            {index === 0 && isAssistantAvailable && (
                 <div className="pt-2 pb-4">
                     <p className="text-xs text-slate-500 mb-2">Ou tente um destes exemplos:</p>
                     <div className="flex flex-wrap gap-2">
@@ -152,12 +170,12 @@ export default function LegalAssistant() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Pergunte algo ao JurisAI..."
             className="w-full rounded-full border-slate-300 bg-slate-100 py-2 pl-4 pr-12 text-sm focus:border-sky-500 focus:ring-sky-500"
-            disabled={isLoading}
+            disabled={isLoading || !isAssistantAvailable}
             aria-label="Mensagem para o assistente"
           />
           <button
             type="submit"
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !input.trim() || !isAssistantAvailable}
             className="absolute inset-y-0 right-0 flex h-full w-10 items-center justify-center rounded-full text-slate-500 transition-colors disabled:cursor-not-allowed disabled:text-slate-300 hover:enabled:text-sky-600"
             aria-label="Enviar mensagem"
           >
