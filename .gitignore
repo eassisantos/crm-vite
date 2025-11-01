@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.vite/
+.env*
+.DS_Store
+*.local
+wrangler.toml.local
+package-lock.json
+npm-debug.log*
+.yarn/
+.pnp.*

@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
-import { Case, Expense, Fee, FeeStatus } from '../types';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import React, { createContext, useContext, useMemo, useCallback, ReactNode, useState, useEffect } from 'react';
+import { Expense, Fee, FeeStatus } from '../types';
 import { mockExpenses, mockFees } from '../data/mockData';
-import { fakeApiCall } from '../utils/fakeApiCall';
+import { executeCommand, fetchBootstrap } from '../services/apiClient';
 import { useCases } from './CasesContext';
 
 interface FinancialSummary {
@@ -22,6 +21,11 @@ interface GlobalFinancialSummary {
   totalDespesas: number;
 }
 
+interface FinancialSnapshot {
+  fees: Fee[];
+  expenses: Expense[];
+}
+
 interface FinancialContextValue {
   fees: Fee[];
   expenses: Expense[];
@@ -37,6 +41,7 @@ interface FinancialContextValue {
   updateInstallmentStatus: (feeId: string, installmentId: string, newStatus: 'Pago' | 'Pendente') => Promise<void>;
   removeFinancialsByCaseIds: (caseIds: string[]) => Promise<void>;
   resetFinancials: () => Promise<void>;
+  setFinancialsFromServer: (snapshot: FinancialSnapshot) => void;
 }
 
 const FinancialContext = createContext<FinancialContextValue | undefined>(undefined);
@@ -44,17 +49,34 @@ const FinancialContext = createContext<FinancialContextValue | undefined>(undefi
 const calculateTotals = (items: { amount: number }[]) => items.reduce((sum, item) => sum + item.amount, 0);
 
 export const FinancialProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [fees, setFees] = useLocalStorage<Fee[]>('crm_fees', mockFees);
-  const [expenses, setExpenses] = useLocalStorage<Expense[]>('crm_expenses', mockExpenses);
+  const [fees, setFees] = useState<Fee[]>(mockFees);
+  const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
   const { cases } = useCases();
 
-  const handleOperationError = (error: unknown, fallbackMessage: string): never => {
-    console.error(fallbackMessage, error);
-    if (error instanceof Error && error.message) {
-      throw new Error(error.message);
-    }
-    throw new Error(fallbackMessage);
-  };
+  useEffect(() => {
+    let cancelled = false;
+    const loadFinancials = async () => {
+      try {
+        const data = await fetchBootstrap();
+        if (!cancelled) {
+          setFees(data.fees);
+          setExpenses(data.expenses);
+        }
+      } catch (error) {
+        console.error('Não foi possível carregar os dados financeiros do servidor.', error);
+      }
+    };
+
+    void loadFinancials();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const applySnapshot = useCallback((snapshot: FinancialSnapshot) => {
+    setFees(snapshot.fees);
+    setExpenses(snapshot.expenses);
+  }, []);
 
   const getFinancialsByCaseId = useCallback((caseId: string) => {
     const caseFees = fees.filter(f => f.caseId === caseId);
@@ -65,7 +87,7 @@ export const FinancialProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [fees, expenses]);
 
   const getFinancialsByClientId = useCallback((clientId: string) => {
-    const clientCaseIds = cases.filter(c => c.clientId === clientId).map((c: Case) => c.id);
+    const clientCaseIds = cases.filter(c => c.clientId === clientId).map(c => c.id);
     const clientFees = fees.filter(f => clientCaseIds.includes(f.caseId));
     const clientExpenses = expenses.filter(e => clientCaseIds.includes(e.caseId));
 
@@ -87,139 +109,128 @@ export const FinancialProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [fees, expenses]);
 
   const addFee = useCallback(async (feeData: Omit<Fee, 'id'>) => {
-    try {
-      const newFee: Fee = { ...feeData, id: `fee-${Date.now()}` };
-      await fakeApiCall(null);
-      setFees(prev => [...prev, newFee]);
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível adicionar o honorário. Tente novamente.');
-    }
-  }, [setFees]);
+    const snapshot = await executeCommand<FinancialSnapshot>({
+      resource: 'financials',
+      action: 'addFee',
+      payload: feeData,
+    });
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
 
   const updateFee = useCallback(async (fee: Fee) => {
-    try {
-      await fakeApiCall(null);
-      setFees(prev => prev.map(f => (f.id === fee.id ? fee : f)));
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível atualizar o honorário. Tente novamente.');
-    }
-  }, [setFees]);
+    const snapshot = await executeCommand<FinancialSnapshot>({
+      resource: 'financials',
+      action: 'updateFee',
+      payload: fee,
+    });
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
 
   const deleteFee = useCallback(async (feeId: string) => {
-    try {
-      await fakeApiCall(null);
-      setFees(prev => prev.filter(f => f.id !== feeId));
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível remover o honorário. Tente novamente.');
-    }
-  }, [setFees]);
+    const snapshot = await executeCommand<FinancialSnapshot>({
+      resource: 'financials',
+      action: 'deleteFee',
+      payload: { feeId },
+    });
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
 
   const addExpense = useCallback(async (expenseData: Omit<Expense, 'id'>) => {
-    try {
-      const newExpense: Expense = { ...expenseData, id: `exp-${Date.now()}` };
-      await fakeApiCall(null);
-      setExpenses(prev => [...prev, newExpense]);
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível adicionar a despesa. Tente novamente.');
-    }
-  }, [setExpenses]);
+    const snapshot = await executeCommand<FinancialSnapshot>({
+      resource: 'financials',
+      action: 'addExpense',
+      payload: expenseData,
+    });
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
 
   const updateExpense = useCallback(async (expense: Expense) => {
-    try {
-      await fakeApiCall(null);
-      setExpenses(prev => prev.map(e => (e.id === expense.id ? expense : e)));
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível atualizar a despesa. Tente novamente.');
-    }
-  }, [setExpenses]);
+    const snapshot = await executeCommand<FinancialSnapshot>({
+      resource: 'financials',
+      action: 'updateExpense',
+      payload: expense,
+    });
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
 
   const deleteExpense = useCallback(async (expenseId: string) => {
-    try {
-      await fakeApiCall(null);
-      setExpenses(prev => prev.filter(e => e.id !== expenseId));
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível remover a despesa. Tente novamente.');
-    }
-  }, [setExpenses]);
+    const snapshot = await executeCommand<FinancialSnapshot>({
+      resource: 'financials',
+      action: 'deleteExpense',
+      payload: { expenseId },
+    });
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
 
   const updateInstallmentStatus = useCallback(async (feeId: string, installmentId: string, newStatus: 'Pago' | 'Pendente') => {
-    try {
-      await fakeApiCall(null);
-      setFees(prevFees =>
-        prevFees.map(fee => {
-          if (fee.id !== feeId || !fee.installments) {
-            return fee;
-          }
-          const installments = fee.installments.map(inst => (inst.id === installmentId ? { ...inst, status: newStatus } : inst));
-          const paidCount = installments.filter(i => i.status === 'Pago').length;
-          let nextStatus = FeeStatus.PENDENTE;
-          if (paidCount === installments.length) {
-            nextStatus = FeeStatus.PAGO;
-          } else if (paidCount > 0) {
-            nextStatus = FeeStatus.PARCIALMENTE_PAGO;
-          }
-          return { ...fee, installments, status: nextStatus };
-        }),
-      );
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível atualizar o status da parcela. Tente novamente.');
-    }
-  }, [setFees]);
+    const snapshot = await executeCommand<FinancialSnapshot>({
+      resource: 'financials',
+      action: 'updateInstallmentStatus',
+      payload: { feeId, installmentId, status: newStatus },
+    });
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
 
   const removeFinancialsByCaseIds = useCallback(async (caseIds: string[]) => {
     if (caseIds.length === 0) {
       return;
     }
-    try {
-      await fakeApiCall(null);
-      setFees(prev => prev.filter(f => !caseIds.includes(f.caseId)));
-      setExpenses(prev => prev.filter(e => !caseIds.includes(e.caseId)));
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível remover os dados financeiros associados aos casos. Tente novamente.');
-    }
-  }, [setFees, setExpenses]);
+    const snapshot = await executeCommand<FinancialSnapshot>({
+      resource: 'financials',
+      action: 'removeByCaseIds',
+      payload: { caseIds },
+    });
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
 
   const resetFinancials = useCallback(async () => {
-    try {
-      await fakeApiCall(null);
-      setFees(mockFees);
-      setExpenses(mockExpenses);
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível restaurar os dados financeiros padrão. Tente novamente.');
-    }
-  }, [setFees, setExpenses]);
+    const snapshot = await executeCommand<FinancialSnapshot>({
+      resource: 'financials',
+      action: 'reset',
+    });
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
 
-  const value = useMemo(() => ({
-    fees,
-    expenses,
-    getFinancialsByCaseId,
-    getFinancialsByClientId,
-    getGlobalFinancials,
-    addFee,
-    updateFee,
-    deleteFee,
-    addExpense,
-    updateExpense,
-    deleteExpense,
-    updateInstallmentStatus,
-    removeFinancialsByCaseIds,
-    resetFinancials,
-  }), [
-    fees,
-    expenses,
-    getFinancialsByCaseId,
-    getFinancialsByClientId,
-    getGlobalFinancials,
-    addFee,
-    updateFee,
-    deleteFee,
-    addExpense,
-    updateExpense,
-    deleteExpense,
-    updateInstallmentStatus,
-    removeFinancialsByCaseIds,
-    resetFinancials,
-  ]);
+  const setFinancialsFromServer = useCallback((snapshot: FinancialSnapshot) => {
+    applySnapshot(snapshot);
+  }, [applySnapshot]);
+
+  const value = useMemo(
+    () => ({
+      fees,
+      expenses,
+      getFinancialsByCaseId,
+      getFinancialsByClientId,
+      getGlobalFinancials,
+      addFee,
+      updateFee,
+      deleteFee,
+      addExpense,
+      updateExpense,
+      deleteExpense,
+      updateInstallmentStatus,
+      removeFinancialsByCaseIds,
+      resetFinancials,
+      setFinancialsFromServer,
+    }),
+    [
+      fees,
+      expenses,
+      getFinancialsByCaseId,
+      getFinancialsByClientId,
+      getGlobalFinancials,
+      addFee,
+      updateFee,
+      deleteFee,
+      addExpense,
+      updateExpense,
+      deleteExpense,
+      updateInstallmentStatus,
+      removeFinancialsByCaseIds,
+      resetFinancials,
+      setFinancialsFromServer,
+    ],
+  );
 
   return <FinancialContext.Provider value={value}>{children}</FinancialContext.Provider>;
 };
