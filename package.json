@@ -1,0 +1,33 @@
+{
+  "name": "crm-vite",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.3",
+    "classnames": "^2.5.1",
+    "framer-motion": "^11.5.5",
+    "lucide-react": "^0.411.0",
+    "pdfjs-dist": "^4.4.178",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@types/classnames": "^2.3.4",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react-swc": "^3.7.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.2",
+    "wrangler": "^3.69.1"
+  }
+}

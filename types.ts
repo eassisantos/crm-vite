@@ -84,10 +84,13 @@ export interface LegalDocument {
 export type DocumentFileType = 'pdf' | 'doc' | 'docx' | 'jpg' | 'jpeg' | 'png' | 'other';
 
 export interface CaseDocument {
+    id: string;
     name: string;
     url: string;
     type: DocumentFileType;
     uploadedAt: string;
+    storageKey?: string;
+    size?: number;
 }
 
 export interface Case {
@@ -184,4 +187,14 @@ export interface BrandingSettings {
 
 export interface NotificationSettings {
     deadlineThresholdDays: number;
+}
+
+export interface SettingsState {
+    documentTemplates: DocumentTemplate[];
+    benefitTypes: string[];
+    caseStatuses: CaseStatus[];
+    documentChecklistConfig: DocumentChecklistConfig;
+    firmInfo: FirmInfo;
+    brandingSettings: BrandingSettings;
+    notificationSettings: NotificationSettings;
 }

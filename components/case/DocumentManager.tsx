@@ -32,7 +32,8 @@ const getFileType = (fileName: string): DocumentFileType => {
     const extension = fileName.split('.').pop()?.toLowerCase();
     if (extension === 'pdf') return 'pdf';
     if (extension === 'doc' || extension === 'docx') return 'doc';
-    if (extension === 'jpg' || extension === 'jpeg') return 'jpeg';
+    if (extension === 'jpg') return 'jpg';
+    if (extension === 'jpeg') return 'jpeg';
     if (extension === 'png') return 'png';
     return 'other';
 };
@@ -61,14 +62,10 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
   };
 
   const saveDocument = async (file: File, fileName: string) => {
-    const newDocument: Omit<CaseDocument, 'uploadedAt'> = {
-        name: fileName,
-        url: URL.createObjectURL(file), // Placeholder URL
-        type: getFileType(fileName),
-    };
+    const renamedFile = file.name === fileName ? file : new File([file], fileName, { type: file.type, lastModified: file.lastModified });
     try {
-      await addDocumentToCase(caseData.id, newDocument);
-      addToast(`Documento "${fileName}" adicionado com sucesso!`, 'success');
+      const result = await addDocumentToCase(caseData.id, renamedFile);
+      addToast(`Documento "${result.document.name}" adicionado com sucesso!`, 'success');
     } catch (error) {
       addToast(getErrorMessage(error, `Não foi possível adicionar o documento "${fileName}". Tente novamente.`), 'error');
       throw error instanceof Error ? error : new Error(`Não foi possível adicionar o documento "${fileName}". Tente novamente.`);
@@ -88,7 +85,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
         }
     } else {
         if (!isAIAvailable) {
-            addToast('Classificação automática indisponível. Configure a URL do proxy VITE_AI_PROXY_URL para habilitar a análise por IA.', 'warning');
+            addToast('Classificação automática indisponível. Configure a integração de IA no Worker para habilitar a análise.', 'warning');
             saveDocument(file, file.name);
             if(event.target) event.target.value = '';
             setUploadingDocName(null);
@@ -155,7 +152,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
   const confirmDelete = async () => {
     if (docToDelete) {
       try {
-        await deleteDocumentFromCase(caseData.id, docToDelete.name);
+        await deleteDocumentFromCase(caseData.id, docToDelete.id);
         addToast(`Documento "${docToDelete.name}" excluído.`, 'info');
         setDocToDelete(null);
       } catch (error) {
@@ -204,7 +201,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
             <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                 <Sparkles className="mt-0.5 text-amber-600" size={18} />
                 <p>
-                    A classificação automática via IA está desativada porque a variável <strong>VITE_AI_PROXY_URL</strong> não foi configurada.
+                    A classificação automática via IA está desativada porque a API de IA configurada no Worker não respondeu.
                     Os documentos serão enviados sem sugestão automática até que a integração seja habilitada.
                 </p>
             </div>
@@ -267,12 +264,15 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
             {caseData.documents.length > 0 ? (
                 <ul className="space-y-2 max-h-60 overflow-y-auto">
                     {caseData.documents.map(doc => (
-                        <li key={doc.name} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-50 group">
+                        <li key={doc.id} className="flex items-center justify-between p-2 rounded-md hover:bg-slate-50 group">
                             <div className="flex items-center min-w-0">
                                 {getFileIcon(doc.type)}
                                 <div className="ml-3 min-w-0">
                                     <p className="text-sm font-medium text-slate-800 truncate" title={doc.name}>{doc.name}</p>
-                                    <p className="text-xs text-slate-500">Enviado em: {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}</p>
+                                    <p className="text-xs text-slate-500">
+                                      Enviado em: {new Date(doc.uploadedAt).toLocaleDateString('pt-BR')}
+                                      {doc.size ? ` · ${(doc.size / (1024 * 1024)).toFixed(2)} MB` : ''}
+                                    </p>
                                 </div>
                             </div>
                             <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
