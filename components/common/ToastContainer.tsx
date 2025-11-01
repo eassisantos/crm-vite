@@ -1,12 +1,13 @@
 import React from 'react';
 import { useToast } from '../../context/ToastContext';
-import { CheckCircle, XCircle, Info, X } from 'lucide-react';
+import { CheckCircle, XCircle, Info, X, AlertTriangle } from 'lucide-react';
 import { ToastMessage, ToastType } from '../../types';
 
 const icons: Record<ToastType, React.ReactNode> = {
-  success: <CheckCircle className="text-emerald-500" />,
-  error: <XCircle className="text-red-500" />,
-  info: <Info className="text-sky-500" />,
+  success: <CheckCircle className="text-emerald-500" />, 
+  error: <XCircle className="text-red-500" />, 
+  info: <Info className="text-sky-500" />, 
+  warning: <AlertTriangle className="text-amber-500" />,
 };
 
 const Toast: React.FC<ToastMessage & { onClose: () => void }> = ({ message, type, closing, onClose }) => {

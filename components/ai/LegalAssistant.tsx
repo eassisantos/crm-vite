@@ -39,7 +39,7 @@ export default function LegalAssistant() {
   const isAssistantAvailable = isGeminiAvailable;
   const assistantGreeting = isAssistantAvailable
     ? 'Olá! Sou o JurisAI, seu assistente jurídico. Como posso ajudar hoje? Posso resumir um caso, pesquisar jurisprudência ou redigir um rascunho de documento.'
-    : 'Olá! O JurisAI está temporariamente indisponível porque a integração com IA não está configurada. Informe a URL do proxy VITE_AI_PROXY_URL para habilitar esta funcionalidade.';
+    : 'Olá! O JurisAI está temporariamente indisponível porque a integração com IA não está configurada. Defina VITE_API_BASE_URL com o endereço do Worker para habilitar esta funcionalidade.';
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 'init', role: 'model', text: assistantGreeting }
   ]);
@@ -123,7 +123,7 @@ export default function LegalAssistant() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAssistantAvailable) {
-      setError('O assistente de IA está indisponível no momento. Configure a URL do proxy VITE_AI_PROXY_URL para utilizar este recurso.');
+      setError('O assistente de IA está indisponível no momento. Defina VITE_API_BASE_URL com o endereço do Worker para utilizar este recurso.');
       return;
     }
     if (!input.trim() || isLoading) return;
@@ -175,7 +175,7 @@ export default function LegalAssistant() {
               <Info size={16} />
             </div>
             <p>
-              Os recursos de IA estão desativados porque a variável de ambiente <strong>VITE_AI_PROXY_URL</strong> não foi definida. Configure o proxy seguro (VITE_AI_PROXY_URL) para habilitar o assistente.
+              Os recursos de IA estão desativados porque a variável de ambiente <strong>VITE_API_BASE_URL</strong> não foi definida. Configure o proxy seguro (VITE_API_BASE_URL) apontando para o Worker para habilitar o assistente.
             </p>
           </div>
         )}

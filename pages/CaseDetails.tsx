@@ -122,7 +122,8 @@ const CaseDetails: React.FC = () => {
   const handleGenerateSummary = async () => {
     if (!caseData || !client) return;
     if (!isAIAvailable) {
-      const message = 'Resumo automatizado indisponível. Configure a URL do proxy VITE_AI_PROXY_URL para ativar a IA.';
+      const message =
+        'Resumo automatizado indisponível. Defina VITE_API_BASE_URL apontando para o Worker para ativar a IA.';
       setError(message);
       addToast(message, 'warning');
       return;
@@ -145,24 +146,25 @@ const CaseDetails: React.FC = () => {
   const handleSuggestTasks = async () => {
     if (!caseData?.notes) return;
     if (!isAIAvailable) {
-        const message = 'Sugestões de tarefas indisponíveis. Configure a URL do proxy VITE_AI_PROXY_URL para ativar a IA.';
-        setError(message);
-        addToast(message, 'warning');
-        return;
+      const message =
+        'Sugestões de tarefas indisponíveis. Defina VITE_API_BASE_URL apontando para o Worker para ativar a IA.';
+      setError(message);
+      addToast(message, 'warning');
+      return;
     }
     setIsSuggestingTasks(true);
     setError(null);
     setSuggestedTasks([]);
     try {
-        const suggestionsString = await suggestTasksFromNotes(caseData.notes);
-        const suggestions: SuggestedTask[] = JSON.parse(suggestionsString);
-        setSuggestedTasks(suggestions);
-        addToast(`${suggestions.length} tarefa(s) sugerida(s) pela IA.`, 'info');
+      const suggestionsString = await suggestTasksFromNotes(caseData.notes);
+      const suggestions: SuggestedTask[] = JSON.parse(suggestionsString);
+      setSuggestedTasks(suggestions);
+      addToast(`${suggestions.length} tarefa(s) sugerida(s) pela IA.`, 'info');
     } catch (e: any) {
-        setError(e.message || "Falha ao sugerir tarefas.");
-        addToast(e.message || "Falha ao sugerir tarefas.", 'error');
+      setError(e.message || 'Falha ao sugerir tarefas.');
+      addToast(e.message || 'Falha ao sugerir tarefas.', 'error');
     } finally {
-        setIsSuggestingTasks(false);
+      setIsSuggestingTasks(false);
     }
   };
 
@@ -243,7 +245,10 @@ const CaseDetails: React.FC = () => {
         {!isAIAvailable && (
           <div className="my-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
             <Sparkles size={18} className="mt-0.5 text-amber-600" />
-            <p>Os recursos de IA estão desativados porque a variável de ambiente <strong>VITE_AI_PROXY_URL</strong> não foi definida. Entre em contato com o administrador para habilitar os recursos automáticos.</p>
+            <p>
+              Os recursos de IA estão desativados porque a variável de ambiente <strong>VITE_API_BASE_URL</strong> não foi
+              definida. Entre em contato com o administrador para habilitar os recursos automáticos.
+            </p>
           </div>
         )}
         

@@ -128,10 +128,10 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   const [caseFormData, setCaseFormData] = useState({
     title: '',
     caseNumber: '',
-    status: caseStatuses[0],
+    status: caseStatuses[0] ?? 'Aberto',
     nature: 'Administrativo' as 'Judicial' | 'Administrativo',
-    benefitType: benefitTypes[0] || '',
-    notes: ''
+    benefitType: benefitTypes[0] ?? 'Outro',
+    notes: '',
   });
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -153,12 +153,12 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   const resetForms = () => {
     setFormData(createInitialClientFormData());
     setCaseFormData({
-        title: '',
-        caseNumber: '',
-        status: caseStatuses[0],
-        nature: 'Administrativo',
-        benefitType: benefitTypes[0] || '',
-        notes: ''
+      title: '',
+      caseNumber: '',
+      status: caseStatuses[0] ?? 'Aberto',
+      nature: 'Administrativo',
+      benefitType: benefitTypes[0] ?? 'Outro',
+      notes: '',
     });
     setError('');
     setCurrentTab('contact');
@@ -220,7 +220,8 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
     if (!fileToProcess) return;
 
     if (!isAIAvailable) {
-      const message = 'Preenchimento automático indisponível. Configure a URL do proxy VITE_AI_PROXY_URL para ativar a análise por IA.';
+      const message =
+        'Preenchimento automático indisponível. Defina VITE_API_BASE_URL apontando para o Worker para habilitar a análise por IA.';
       setError(message);
       addToast(message, 'warning');
       return;
@@ -305,7 +306,8 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
 
   const handleDocTypeClick = (docType: string, isRep: boolean) => {
     if (!isAIAvailable) {
-        const message = 'Recurso de leitura automática desativado. Configure a URL do proxy VITE_AI_PROXY_URL para utilizar esta funcionalidade.';
+        const message =
+          'Recurso de leitura automática desativado. Configure VITE_API_BASE_URL com a URL do Worker para utilizar esta funcionalidade.';
         setError(message);
         addToast(message, 'warning');
         return;
@@ -432,7 +434,9 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
         <Bot size={32} className={`mx-auto ${isRep ? 'text-blue-500' : 'text-sky-500'}`} />
         <h3 className="mt-2 text-lg font-medium text-slate-900">{isRep ? 'Dados do Representante' : 'Poupe tempo com IA'}</h3>
         <p className="mt-1 text-sm text-slate-600">
-            {isAIAvailable ? 'Escolha o tipo de documento e envie o arquivo. A IA preencherá os dados para você.' : 'Integração de IA desativada. Configure a URL do proxy VITE_AI_PROXY_URL para habilitar o preenchimento automático.'}
+            {isAIAvailable
+              ? 'Escolha o tipo de documento e envie o arquivo. A IA preencherá os dados para você.'
+              : 'Integração de IA desativada. Defina VITE_API_BASE_URL com o endereço do Worker para habilitar o preenchimento automático.'}
         </p>
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
             {docTypes.map(doc => (
@@ -455,7 +459,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
         {!isAIAvailable && (
             <div className="mt-4 flex items-center justify-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
                 <Info size={14} className="text-amber-600" />
-                <span>Adicione a variável VITE_AI_PROXY_URL ao ambiente para ativar a leitura automática de documentos.</span>
+                <span>Adicione a variável VITE_API_BASE_URL ao ambiente para ativar a leitura automática de documentos.</span>
             </div>
         )}
     </div>
