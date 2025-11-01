@@ -1,0 +1,17 @@
+name = "crm-vite-worker"
+main = "worker/src/index.ts"
+compatibility_date = "2024-07-29"
+node_compat = true
+
+[vars]
+# Configure via wrangler secret put for sensitive values
+NEON_DATABASE_URL = ""
+AI_PROVIDER = "openai"
+OPENAI_MODEL = "gpt-4o-mini"
+GOOGLE_AI_MODEL = "gemini-1.5-flash"
+R2_PUBLIC_BASE_URL = ""
+
+[[r2_buckets]]
+binding = "FILES_BUCKET"
+bucket_name = "crm-files"
+preview_bucket_name = "crm-files-dev"

@@ -1,87 +1,121 @@
-import React, { createContext, useContext, useMemo, useCallback, ReactNode } from 'react';
-import { Client } from '../types';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import React, { createContext, useContext, useMemo, useCallback, ReactNode, useState, useEffect } from 'react';
+import { Case, Client, Expense, Fee } from '../types';
 import { mockClients } from '../data/mockData';
-import { fakeApiCall } from '../utils/fakeApiCall';
 import { useCases } from './CasesContext';
 import { useFinancial } from './FinancialContext';
+import { executeCommand, fetchBootstrap } from '../services/apiClient';
 
-type ClientFormData = Omit<Client, 'id' | 'createdAt'>;
+interface ClientFormData extends Omit<Client, 'id' | 'createdAt'> {}
 
 interface ClientsContextValue {
   clients: Client[];
   getClientById: (id: string) => Client | undefined;
   addClient: (clientData: ClientFormData) => Promise<Client>;
-  updateClient: (clientData: Client) => Promise<void>;
+  updateClient: (clientData: Client) => Promise<Client>;
   deleteClient: (clientId: string) => Promise<void>;
   resetClients: () => Promise<void>;
+  setClientsFromServer: (serverClients: Client[]) => void;
 }
 
 const ClientsContext = createContext<ClientsContextValue | undefined>(undefined);
 
 export const ClientsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [clients, setClients] = useLocalStorage<Client[]>('crm_clients', mockClients);
-  const { removeCasesByClientId } = useCases();
-  const { removeFinancialsByCaseIds } = useFinancial();
+  const [clients, setClients] = useState<Client[]>(mockClients);
+  const { setCasesFromServer } = useCases();
+  const { setFinancialsFromServer } = useFinancial();
 
-  const handleOperationError = (error: unknown, fallbackMessage: string): never => {
-    console.error(fallbackMessage, error);
-    if (error instanceof Error && error.message) {
-      throw new Error(error.message);
-    }
-    throw new Error(fallbackMessage);
-  };
+  useEffect(() => {
+    let cancelled = false;
+    const loadClients = async () => {
+      try {
+        const data = await fetchBootstrap();
+        if (!cancelled) {
+          setClients(data.clients);
+        }
+      } catch (error) {
+        console.error('Não foi possível carregar os clientes do servidor.', error);
+      }
+    };
+
+    void loadClients();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const getClientById = useCallback((id: string) => clients.find(c => c.id === id), [clients]);
 
-  const addClient = useCallback(async (clientData: ClientFormData): Promise<Client> => {
-    try {
-      const newClient: Client = { ...clientData, id: `client-${Date.now()}`, createdAt: new Date().toISOString() };
-      await fakeApiCall(null);
+  const addClient = useCallback(
+    async (clientData: ClientFormData): Promise<Client> => {
+      const newClient = await executeCommand<Client>({
+        resource: 'clients',
+        action: 'create',
+        payload: clientData,
+      });
       setClients(prev => [...prev, newClient]);
       return newClient;
-    } catch (error) {
-      return handleOperationError(error, 'Não foi possível adicionar o cliente. Tente novamente.');
-    }
-  }, [setClients]);
+    },
+    [],
+  );
 
-  const updateClient = useCallback(async (clientData: Client) => {
-    try {
-      await fakeApiCall(null);
-      setClients(prev => prev.map(c => (c.id === clientData.id ? clientData : c)));
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível atualizar o cliente. Tente novamente.');
-    }
-  }, [setClients]);
+  const updateClient = useCallback(
+    async (clientData: Client) => {
+      const updatedClient = await executeCommand<Client>({
+        resource: 'clients',
+        action: 'update',
+        payload: clientData,
+      });
+      setClients(prev => prev.map(c => (c.id === updatedClient.id ? updatedClient : c)));
+      return updatedClient;
+    },
+    [],
+  );
 
-  const deleteClient = useCallback(async (clientId: string) => {
-    try {
-      await fakeApiCall(null);
-      const caseIds = await removeCasesByClientId(clientId);
-      await removeFinancialsByCaseIds(caseIds);
-      setClients(prev => prev.filter(c => c.id !== clientId));
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível remover o cliente. Tente novamente.');
-    }
-  }, [removeCasesByClientId, removeFinancialsByCaseIds, setClients]);
+  const deleteClient = useCallback(
+    async (clientId: string) => {
+      const result = await executeCommand<{
+        clients: Client[];
+        cases: Case[];
+        fees: Fee[];
+        expenses: Expense[];
+        removedCaseIds: string[];
+      }>({
+        resource: 'clients',
+        action: 'delete',
+        payload: { clientId },
+      });
+
+      setClients(result.clients);
+      setCasesFromServer(result.cases);
+      setFinancialsFromServer({ fees: result.fees, expenses: result.expenses });
+    },
+    [setCasesFromServer, setFinancialsFromServer],
+  );
 
   const resetClients = useCallback(async () => {
-    try {
-      await fakeApiCall(null);
-      setClients(mockClients);
-    } catch (error) {
-      handleOperationError(error, 'Não foi possível restaurar a lista de clientes. Tente novamente.');
-    }
-  }, [setClients]);
+    const result = await executeCommand<Client[]>({
+      resource: 'clients',
+      action: 'reset',
+    });
+    setClients(result);
+  }, []);
 
-  const value = useMemo(() => ({
-    clients,
-    getClientById,
-    addClient,
-    updateClient,
-    deleteClient,
-    resetClients,
-  }), [clients, getClientById, addClient, updateClient, deleteClient, resetClients]);
+  const setClientsFromServer = useCallback((serverClients: Client[]) => {
+    setClients(serverClients);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      clients,
+      getClientById,
+      addClient,
+      updateClient,
+      deleteClient,
+      resetClients,
+      setClientsFromServer,
+    }),
+    [clients, getClientById, addClient, updateClient, deleteClient, resetClients, setClientsFromServer],
+  );
 
   return <ClientsContext.Provider value={value}>{children}</ClientsContext.Provider>;
 };
