@@ -163,7 +163,12 @@ async function ensureState(env: Env): Promise<void> {
     })();
   }
 
-  await initializationPromise;
+  try {
+    await initializationPromise;
+  } catch (error) {
+    initializationPromise = null;
+    throw error;
+  }
 }
 
 async function handleBootstrap(env: Env) {

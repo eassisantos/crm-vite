@@ -1,19 +1,70 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Client, RepresentativeData, Case } from '../../types';
+import { Client, RepresentativeData } from '../../types';
 import { X, Bot, Loader2, FileText, AlertTriangle, User, FileBadge, MapPin, Shield, Briefcase, ArrowRight, Car, Fingerprint, Globe, FilePlus, Info } from 'lucide-react';
 import { extractClientInfoFromDocument, extractClientInfoFromImage, isGeminiAvailable } from '../../services/geminiService';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useToast } from '../../context/ToastContext';
 import { useModalAccessibility } from '../../hooks/useModalAccessibility';
 import { AnimatePresence, motion } from 'framer-motion';
-
-const getErrorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error && error.message ? error.message : fallback;
 import FormField from './FormField';
 import { useSettings } from '../../context/SettingsContext';
 import { useClients } from '../../context/ClientsContext';
 import { useCases } from '../../context/CasesContext';
 import { maskPhone, maskCpf, maskCep } from '../../utils/masks';
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error && error.message ? error.message : fallback;
+
+const createEmptyRepresentative = (): RepresentativeData => ({
+  name: '',
+  motherName: '',
+  fatherName: '',
+  cpf: '',
+  rg: '',
+  rgIssuer: '',
+  rgIssuerUF: '',
+  dataEmissao: '',
+  dateOfBirth: '',
+  nacionalidade: '',
+  naturalidade: '',
+  estadoCivil: '',
+  profissao: '',
+  email: '',
+  phone: '',
+  cep: '',
+  street: '',
+  number: '',
+  complement: '',
+  neighborhood: '',
+  city: '',
+  state: '',
+});
+
+const createInitialClientFormData = (): Omit<Client, 'id' | 'createdAt'> => ({
+  name: '',
+  cpf: '',
+  rg: '',
+  rgIssuer: '',
+  rgIssuerUF: '',
+  dataEmissao: '',
+  motherName: '',
+  fatherName: '',
+  dateOfBirth: '',
+  nacionalidade: '',
+  naturalidade: '',
+  estadoCivil: '',
+  profissao: '',
+  legalRepresentative: createEmptyRepresentative(),
+  email: '',
+  phone: '',
+  cep: '',
+  street: '',
+  number: '',
+  complement: '',
+  neighborhood: '',
+  city: '',
+  state: '',
+});
 
 interface ClientFormModalProps {
   isOpen: boolean;
@@ -54,9 +105,6 @@ const TabButton: React.FC<{
   </button>
 );
 
-const emptyRepresentative: RepresentativeData = { name: '', motherName: '', fatherName: '', cpf: '', rg: '', rgIssuer: '', rgIssuerUF: '', dataEmissao: '', dateOfBirth: '', nacionalidade: '', naturalidade: '', estadoCivil: '', profissao: '', email: '', phone: '', cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' };
-const initialClientFormData: Omit<Client, 'id' | 'createdAt'> = { name: '', cpf: '', rg: '', rgIssuer: '', rgIssuerUF: '', dataEmissao: '', motherName: '', fatherName: '', dateOfBirth: '', nacionalidade: '', naturalidade: '', estadoCivil: '', profissao: '', legalRepresentative: emptyRepresentative, email: '', phone: '', cep: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '', createdAt: '' };
-
 const docTypes = [
   { name: 'CNH', icon: <Car size={24} /> },
   { name: 'RG', icon: <Fingerprint size={24} /> },
@@ -76,7 +124,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   const [step, setStep] = useState<Step>('clientDetails');
   const [newlyCreatedClient, setNewlyCreatedClient] = useState<Client | null>(null);
 
-  const [formData, setFormData] = useState(initialClientFormData);
+  const [formData, setFormData] = useState<Omit<Client, 'id' | 'createdAt'>>(() => createInitialClientFormData());
   const [caseFormData, setCaseFormData] = useState({
     title: '',
     caseNumber: '',
@@ -93,6 +141,8 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
+  useModalAccessibility(isOpen, dialogRef, { onClose, initialFocusRef: firstFieldRef });
+
   const [isCepLoading, setIsCepLoading] = useState(false);
   const [isRepCepLoading, setIsRepCepLoading] = useState(false);
   const [isUnderage, setIsUnderage] = useState(false);
@@ -101,7 +151,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
 
   const resetForms = () => {
-    setFormData(initialClientFormData);
+    setFormData(createInitialClientFormData());
     setCaseFormData({
         title: '',
         caseNumber: '',
@@ -120,16 +170,29 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
   useEffect(() => {
     if (isOpen) {
         if (initialData) {
-            const data = { ...initialClientFormData, ...initialData };
-            data.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth + 'T00:00:00').toISOString().split('T')[0] : '';
-            data.dataEmissao = data.dataEmissao ? new Date(data.dataEmissao + 'T00:00:00').toISOString().split('T')[0] : '';
-            if (data.legalRepresentative) {
-                data.legalRepresentative.dateOfBirth = data.legalRepresentative.dateOfBirth ? new Date(data.legalRepresentative.dateOfBirth + 'T00:00:00').toISOString().split('T')[0] : '';
-                data.legalRepresentative.dataEmissao = data.legalRepresentative.dataEmissao ? new Date(data.legalRepresentative.dataEmissao + 'T00:00:00').toISOString().split('T')[0] : '';
-            } else {
-                data.legalRepresentative = emptyRepresentative;
+            const { createdAt: _createdAt, legalRepresentative, ...rest } = initialData;
+            const normalized = {
+              ...createInitialClientFormData(),
+              ...rest,
+              legalRepresentative: legalRepresentative
+                ? { ...createEmptyRepresentative(), ...legalRepresentative }
+                : createEmptyRepresentative(),
+            };
+            normalized.dateOfBirth = normalized.dateOfBirth
+              ? new Date(`${normalized.dateOfBirth}T00:00:00`).toISOString().split('T')[0]
+              : '';
+            normalized.dataEmissao = normalized.dataEmissao
+              ? new Date(`${normalized.dataEmissao}T00:00:00`).toISOString().split('T')[0]
+              : '';
+            if (normalized.legalRepresentative) {
+              normalized.legalRepresentative.dateOfBirth = normalized.legalRepresentative.dateOfBirth
+                ? new Date(`${normalized.legalRepresentative.dateOfBirth}T00:00:00`).toISOString().split('T')[0]
+                : '';
+              normalized.legalRepresentative.dataEmissao = normalized.legalRepresentative.dataEmissao
+                ? new Date(`${normalized.legalRepresentative.dataEmissao}T00:00:00`).toISOString().split('T')[0]
+                : '';
             }
-            setFormData(data);
+            setFormData(normalized);
         } else {
             resetForms();
         }
@@ -146,7 +209,7 @@ const ClientFormModal: React.FC<ClientFormModalProps> = ({ isOpen, onClose, onSa
         const underage = age < 18;
         setIsUnderage(underage);
         if (!underage) {
-            setFormData(prev => ({ ...prev, legalRepresentative: emptyRepresentative }));
+            setFormData(prev => ({ ...prev, legalRepresentative: createEmptyRepresentative() }));
         }
     } else {
         setIsUnderage(false);

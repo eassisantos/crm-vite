@@ -17,25 +17,29 @@ interface DocumentManagerProps {
 }
 
 const getFileIcon = (type: DocumentFileType) => {
-    switch (type) {
-        case 'pdf': return <FileText className="text-red-500" size={24} />;
-        case 'doc':
-        case 'docx': return <FileText className="text-blue-500" size={24} />;
-        case 'jpg':
-        case 'jpeg':
-        case 'png': return <FileImage className="text-green-500" size={24} />;
-        default: return <File className="text-slate-500" size={24} />;
-    }
+  switch (type) {
+    case 'pdf':
+      return <FileText className="text-red-500" size={24} />;
+    case 'doc':
+    case 'docx':
+      return <FileText className="text-blue-500" size={24} />;
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+      return <FileImage className="text-green-500" size={24} />;
+    default:
+      return <File className="text-slate-500" size={24} />;
+  }
 };
 
 const getFileType = (fileName: string): DocumentFileType => {
-    const extension = fileName.split('.').pop()?.toLowerCase();
-    if (extension === 'pdf') return 'pdf';
-    if (extension === 'doc' || extension === 'docx') return 'doc';
-    if (extension === 'jpg') return 'jpg';
-    if (extension === 'jpeg') return 'jpeg';
-    if (extension === 'png') return 'png';
-    return 'other';
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  if (extension === 'pdf') return 'pdf';
+  if (extension === 'doc' || extension === 'docx') return 'doc';
+  if (extension === 'jpg') return 'jpg';
+  if (extension === 'jpeg') return 'jpeg';
+  if (extension === 'png') return 'png';
+  return 'other';
 };
 
 const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenefitType }) => {
@@ -74,79 +78,89 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
-    if (uploadingDocName) {
+    try {
+      if (uploadingDocName) {
         const newFileName = `${uploadingDocName.replace(/ /g, '_').toLowerCase()}_${Date.now()}.${file.name.split('.').pop()}`;
         try {
           await saveDocument(file, newFileName);
         } catch (error) {
           console.error('Erro ao salvar documento vinculado ao checklist.', error);
         }
-    } else {
-        if (!isAIAvailable) {
-            addToast('Classificação automática indisponível. Configure a integração de IA no Worker para habilitar a análise.', 'warning');
-            saveDocument(file, file.name);
-            if(event.target) event.target.value = '';
-            setUploadingDocName(null);
-            return;
+        return;
+      }
+
+      if (!isAIAvailable) {
+        addToast(
+          'Classificação automática indisponível. Configure a integração de IA no Worker para habilitar a análise.',
+          'warning',
+        );
+        await saveDocument(file, file.name);
+        return;
+      }
+
+      setIsAnalyzing(true);
+      setAnalysisSuggestion(null);
+
+      try {
+        const checklist = documentChecklistConfig[clientBenefitType] ?? documentChecklistConfig.Outro ?? [];
+        let content: string;
+        let mimeType: string | null = null;
+
+        if (file.type.startsWith('image/')) {
+          mimeType = file.type;
+          content = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(String((e.target?.result as string).split(',')[1] ?? ''));
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        } else if (file.type === 'application/pdf') {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            fullText += textContent.items.map(item => ('str' in item ? item.str : '')).join(' ');
+          }
+          content = fullText;
+        } else {
+          await saveDocument(file, file.name);
+          addToast('Documento enviado sem classificação automática.', 'info');
+          return;
         }
-        setIsAnalyzing(true);
-        setAnalysisSuggestion(null);
+
+        const suggestedCategory = await classifyDocument(content, mimeType, checklist);
+
+        if (suggestedCategory && suggestedCategory !== 'Outro') {
+          setAnalysisSuggestion({ file, suggestedCategory });
+        } else {
+          await saveDocument(file, file.name);
+          addToast('Documento adicionado. A IA não sugeriu uma categoria.', 'info');
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error('Error during document analysis:', error);
+        }
+        addToast('Erro ao analisar o documento. Enviando como avulso.', 'error');
         try {
-            const checklist = documentChecklistConfig[clientBenefitType] || documentChecklistConfig["Outro"] || [];
-            let content: string;
-            let mimeType: string | null = null;
-
-            if (file.type.startsWith('image/')) {
-                mimeType = file.type;
-                content = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve((e.target?.result as string).split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-            } else if (file.type === 'application/pdf') {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                let fullText = '';
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    const page = await pdf.getPage(i);
-                    const textContent = await page.getTextContent();
-                    fullText += textContent.items.map(item => 'str' in item ? item.str : '').join(' ');
-                }
-                content = fullText;
-            } else {
-                saveDocument(file, file.name);
-                setIsAnalyzing(false);
-                return;
-            }
-
-            const suggestedCategory = await classifyDocument(content, mimeType, checklist);
-
-            if (suggestedCategory && suggestedCategory !== 'Outro') {
-                setAnalysisSuggestion({ file, suggestedCategory });
-            } else {
-                await saveDocument(file, file.name);
-                addToast('Documento adicionado. A IA não sugeriu uma categoria.', 'info');
-            }
-        } catch (error) {
-            if (import.meta.env.DEV) {
-                console.error("Error during document analysis:", error);
-            }
-            addToast('Erro ao analisar o documento. Enviando como avulso.', 'error');
-            try {
-              await saveDocument(file, file.name);
-            } catch (innerError) {
-              console.error('Erro ao salvar documento após falha na análise.', innerError);
-            }
-        } finally {
-            setIsAnalyzing(false);
+          await saveDocument(file, file.name);
+        } catch (innerError) {
+          console.error('Erro ao salvar documento após falha na análise.', innerError);
         }
+      } finally {
+        setIsAnalyzing(false);
+      }
+    } finally {
+      if (event.target) {
+        event.target.value = '';
+      }
+      setUploadingDocName(null);
     }
-
-    if(event.target) event.target.value = '';
-    setUploadingDocName(null);
   };
 
   const confirmDelete = async () => {
@@ -181,7 +195,7 @@ const DocumentManager: React.FC<DocumentManagerProps> = ({ caseData, clientBenef
         .catch(error => console.error('Erro ao salvar documento após ignorar sugestão.', error));
   };
 
-  const docsForBenefit = documentChecklistConfig[clientBenefitType] || documentChecklistConfig["Outro"] || [];
+  const docsForBenefit = documentChecklistConfig[clientBenefitType] ?? documentChecklistConfig.Outro ?? [];
 
   return (
     <>
